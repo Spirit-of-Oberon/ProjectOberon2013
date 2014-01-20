@@ -1,5 +1,5 @@
 MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
-  IMPORT SYSTEM, Display, Files, Texts, Oberon, Graphics, GraphicFrames;
+  IMPORT Display, Files, Oberon, Graphics, GraphicFrames;
 
   TYPE
     Curve* = POINTER TO CurveDesc;
@@ -11,7 +11,6 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
   (*kind: 0 = up-line, 1 = down-line, 2 = circle, 3 = ellipse*)
 
   VAR method*: Graphics.Method;
-    W: Texts.Writer;
 
   PROCEDURE Dot(f: GraphicFrames.Frame; col, x, y: INTEGER);
   BEGIN
@@ -146,8 +145,7 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
 
   PROCEDURE Selectable(obj: Graphics.Object; x, y: INTEGER): BOOLEAN;
     VAR xm, y0, w, h: INTEGER; res: BOOLEAN;
-  BEGIN Texts.WriteString(W, "Curves.Sel"); Texts.WriteHex(W, ORD(obj)); SYSTEM.GET(ORD(obj)-8, xm);
-    Texts.WriteHex(W, xm); Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
+  BEGIN
     IF obj(Curve).kind <= 1 THEN  (*line*)
       w := obj.w; h := obj.h;
       IF obj(Curve).kind = 1 THEN y0 := obj.y + h; h := -h ELSE y0 := obj.y END ;
@@ -236,6 +234,5 @@ MODULE Curves;  (*NW 8.11.90 / 18.4.2013*)
 BEGIN NEW(method); method.module := "Curves"; method.allocator := "New";
   method.new := New; method.copy := Copy; method.draw := Draw;
   method.selectable := Selectable; method.change := Change;
-  method.read := Read; method.write := Write;
-  Texts.OpenWriter(W)
+  method.read := Read; method.write := Write
 END Curves.

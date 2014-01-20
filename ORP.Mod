@@ -1,4 +1,4 @@
-MODULE ORP; (*N. Wirth 1.7.97 / 5.11.2013  Oberon compiler for RISC in Oberon-07*)
+MODULE ORP; (*N. Wirth 1.7.97 / 15.12.2013  Oberon compiler for RISC in Oberon-07*)
   IMPORT Texts, Oberon, ORS, ORB, ORG;
   (*Author: Niklaus Wirth, 2011.
     Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
@@ -471,6 +471,12 @@ MODULE ORP; (*N. Wirth 1.7.97 / 5.11.2013  Oberon compiler for RISC in Oberon-07
       END
      END TypeCase;
 
+    PROCEDURE SkipCase;
+    BEGIN 
+      WHILE sym # ORS.colon DO ORS.Get(sym) END ;
+      ORS.Get(sym); StatSequence
+    END SkipCase;
+
   BEGIN (* StatSequence *)
     REPEAT (*sync*) obj := NIL;
       IF ~((sym = ORS.ident) OR (sym >= ORS.if) & (sym <= ORS.for) OR (sym >= ORS.semicolon)) THEN
@@ -553,15 +559,16 @@ MODULE ORP; (*N. Wirth 1.7.97 / 5.11.2013  Oberon compiler for RISC in Oberon-07
         ORS.Get(sym);
         IF sym = ORS.ident THEN
           qualident(obj); orgtype := obj.type;
-          IF ~((orgtype.form = ORB.Pointer) OR (orgtype.form = ORB.Record) & (obj.class = ORB.Par)) THEN
-            ORS.Mark("bad case var")
-          END ;
-          Check(ORS.of, "OF expected"); TypeCase(obj, x); L0 := 0;
-          WHILE sym = ORS.bar DO
-            ORS.Get(sym); ORG.FJump(L0); ORG.Fixup(x); obj.type := orgtype; TypeCase(obj, x)
-          END ;
-          ORG.Fixup(x); ORG.FixLink(L0); obj.type := orgtype
-        ELSE ORS.Mark("ident expected")
+          IF (orgtype.form = ORB.Pointer) OR (orgtype.form = ORB.Record) & (obj.class = ORB.Par) THEN
+            Check(ORS.of, "OF expected"); TypeCase(obj, x); L0 := 0;
+            WHILE sym = ORS.bar DO
+              ORS.Get(sym); ORG.FJump(L0); ORG.Fixup(x); obj.type := orgtype; TypeCase(obj, x)
+            END ;
+            ORG.Fixup(x); ORG.FixLink(L0); obj.type := orgtype
+          ELSE ORS.Mark("numeric case not implemented");
+            Check(ORS.of, "OF expected"); SkipCase;
+            WHILE sym = ORS.bar DO SkipCase END
+          END
         END ;
         Check(ORS.end, "no END")
       END ;
@@ -967,7 +974,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 5.11.2013  Oberon compiler for RISC in Oberon-07
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  5.11.2013");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  15.12.2013");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := ORB.Var; dummy.type := ORB.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0

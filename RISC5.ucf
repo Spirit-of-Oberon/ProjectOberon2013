@@ -1,0 +1,114 @@
+NET "CLK50M" LOC = "T9" ;
+
+NET "TxD" LOC = "R13"; 
+NET "RxD" LOC = "T13";
+
+NET "btn[0]" LOC = "M13"; 
+NET "btn[1]" LOC = "M14"; 
+NET "btn[2]" LOC = "L13"; 
+NET "btn[3]" LOC = "L14"; 
+
+NET "swi[0]" LOC = "F12";
+NET "swi[1]" LOC = "G12";
+NET "swi[2]" LOC = "H14";
+NET "swi[3]" LOC = "H13";
+NET "swi[4]" LOC = "J14";
+NET "swi[5]" LOC = "J13";
+NET "swi[6]" LOC = "K14";
+NET "swi[7]" LOC = "K13";
+
+NET "leds[0]" LOC = "K12";
+NET "leds[1]" LOC = "P14";
+NET "leds[2]" LOC = "L12";
+NET "leds[3]" LOC = "N14";
+NET "leds[4]" LOC = "P13";
+NET "leds[5]" LOC = "N12";
+NET "leds[6]" LOC = "P12";
+NET "leds[7]" LOC = "P11";
+
+# SRAM
+NET "SRce0" LOC = "P7";
+NET "SRce1" LOC = "N5";
+NET "SRwe" LOC = "G3";
+NET "SRoe" LOC = "K4";
+NET "SRbe[0]" LOC = "P6";
+NET "SRbe[1]" LOC = "T4";
+NET "SRbe[2]" LOC = "P5";
+NET "SRbe[3]" LOC = "R4";
+NET "SRadr[0]" LOC = "L5";
+NET "SRadr[1]" LOC = "N3";
+NET "SRadr[2]" LOC = "M4";
+NET "SRadr[3]" LOC = "M3";
+NET "SRadr[4]" LOC = "L4";
+NET "SRadr[5]" LOC = "G4";
+NET "SRadr[6]" LOC = "F3";
+NET "SRadr[7]" LOC = "F4";
+NET "SRadr[8]" LOC = "E3";
+NET "SRadr[9]" LOC = "E4";
+NET "SRadr[10]" LOC = "G5";
+NET "SRadr[11]" LOC = "H3";
+NET "SRadr[12]" LOC = "H4";
+NET "SRadr[13]" LOC = "J4";
+NET "SRadr[14]" LOC = "J3";
+NET "SRadr[15]" LOC = "K3";
+NET "SRadr[16]" LOC = "K5";
+NET "SRadr[17]" LOC = "L3";
+NET "SRdat[0]" LOC = "N7";
+NET "SRdat[1]" LOC = "T8";
+NET "SRdat[2]" LOC = "R6";
+NET "SRdat[3]" LOC = "T5";
+NET "SRdat[4]" LOC = "R5";
+NET "SRdat[5]" LOC = "C2";
+NET "SRdat[6]" LOC = "C1";
+NET "SRdat[7]" LOC = "B1";
+NET "SRdat[8]" LOC = "D3";
+NET "SRdat[9]" LOC = "P8";
+NET "SRdat[10]" LOC = "F2";
+NET "SRdat[11]" LOC = "H1";
+NET "SRdat[12]" LOC = "J2";
+NET "SRdat[13]" LOC = "L2";
+NET "SRdat[14]" LOC = "P1";
+NET "SRdat[15]" LOC = "R1";
+NET "SRdat[16]" LOC = "P2";
+NET "SRdat[17]" LOC = "N2";
+NET "SRdat[18]" LOC = "M2";
+NET "SRdat[19]" LOC = "K1";
+NET "SRdat[20]" LOC = "J1";
+NET "SRdat[21]" LOC = "G2";
+NET "SRdat[22]" LOC = "E1";
+NET "SRdat[23]" LOC = "D1";
+NET "SRdat[24]" LOC = "D2";
+NET "SRdat[25]" LOC = "E2";
+NET "SRdat[26]" LOC = "G1";
+NET "SRdat[27]" LOC = "F5";
+NET "SRdat[28]" LOC = "C3";
+NET "SRdat[29]" LOC = "K2";
+NET "SRdat[30]" LOC = "M1";
+NET "SRdat[31]" LOC = "N1";
+
+# SPI
+NET "MOSI" LOC = "C11";
+NET "SCLK" LOC = "E10";
+NET "SS[0]" LOC = "D11";
+NET "SS[1]" LOC = "C12";
+NET "MISO" LOC = "C10" |PULLUP;
+
+# VGA port
+NET "Hsync"  LOC = "R9";
+NET "Vsync"  LOC = "T10";
+NET "RGB[0]" LOC = "R11";
+NET "RGB[1]" LOC = "T12";
+NET "RGB[2]" LOC = "R12";
+
+# keyboard
+NET "PS2C" LOC = "M16" |PULLUP;
+NET "PS2D" LOC = "M15" |PULLUP;
+
+# NW mouse
+NET "mouse[0]" LOC = "C15" |PULLUP;
+NET "mouse[1]" LOC = "D15" |PULLUP;
+NET "mouse[2]" LOC = "E15" |PULLUP;
+NET "mouse[3]" LOC = "F15" |PULLUP;
+NET "mouse[4]" LOC = "D16" |PULLUP;
+NET "mouse[5]" LOC = "C16" |PULLUP;
+NET "mouse[6]" LOC = "E16" |PULLUP;
