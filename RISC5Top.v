@@ -1,5 +1,6 @@
 `timescale 1ns / 1ps  // NW 27.5.09 / 14.2.2013
 // with SRAM, byte access, and flt.-pt.
+// PS/2 mouse and network 7.1.2014 PDR
 
 module RISC5Top(
   input CLK50M,
@@ -12,13 +13,14 @@ module RISC5Top(
   output [3:0] SRbe,
   output [17:0] SRadr,
   inout [31:0] SRdat,
-  input MISO,          // PSI - SD card
-  output SCLK, MOSI,
+  input [1:0] MISO,          // SPI - SD card & network
+  output [1:0] SCLK, MOSI,
   output [1:0] SS,
+  output NEN,  // network enable
   output hsync, vsync, // video controller
   output [2:0] RGB,
   inout PS2C, PS2D,    // keyboard
-  inout [6:0] mouse);
+  inout [1:0] mouse);
 
 // IO addresses for input / output
 // 0  milliseconds / --
@@ -51,22 +53,23 @@ reg [31:0] cnt1; // milliseconds
 
 wire [31:0] spiRx;
 wire spiStart, spiRdy;
-reg [2:0] spiCtrl;
+reg [3:0] spiCtrl;
 wire [17:0] vidadr;
 
 RISC5 riscx(.clk(clk), .rst(rst), .rd(rd), .wr(wr), .ben(be), .stallX(dspreq),
-     .adr(adr), .codebus(inbus1), .inbus(inbus), .outbus(outbus));
+   .adr(adr), .codebus(inbus1), .inbus(inbus), .outbus(outbus));
 RS232R receiver(.clk(clk), .rst(rst), .RxD(RxD), .fsel(bitrate), .done(doneRx),
    .data(dataRx), .rdy(rdyRx));
 RS232T transmitter(.clk(clk), .rst(rst), .start(startTx), .fsel(bitrate),
    .data(dataTx), .TxD(TxD), .rdy(rdyTx));
-SPI spi(.clk(clk), .rst(rst), .start(spiStart), .dataTx(outbus), .fast(spiCtrl[2]),
-   .dataRx(spiRx), .rdy(spiRdy), .SCLK(SCLK), .MOSI(MOSI), .MISO(MISO));
-VID vid(.clk(clk), .clk25(clk25), .req(dspreq), .inv(swi[7]),
+SPI spi(.clk(clk), .rst(rst), .start(spiStart), .dataTx(outbus),
+   .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
+ 	.SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
+VID vid(.clk(clk), .req(dspreq), .inv(swi[7]),
    .vidadr(vidadr), .viddata(inbus1), .RGB(RGB), .hsync(hsync), .vsync(vsync));
 PS2 kbd(.clk(clk), .rst(rst), .done(doneKbd), .rdy(rdyKbd), .shift(),
    .data(dataKbd), .PS2C(PS2C), .PS2D(PS2D));
-MouseX Ms(.clk(clk), .in(mouse), .out(dataMs));
+MouseP Ms(.clk(clk), .rst(rst), .io(mouse), .out(dataMs));
 
 assign iowadr = adr[5:2];
 assign ioenb = (adr[19:6] == 14'b11111111111111);
@@ -119,15 +122,16 @@ assign limit = (cnt0 == 24999);
 assign leds = Lreg;
 assign spiStart = wr & ioenb & (iowadr == 4);
 assign SS = ~spiCtrl[1:0];  //active low slave select
+assign MOSI[1] = MOSI[0], SCLK[1] = SCLK[0], NEN = spiCtrl[3];
 assign doneKbd = rd & ioenb & (iowadr == 7);
 
-always @(posedge clk) 
+always @(posedge clk)
 begin
   rst <= ((cnt1[4:0] == 0) & limit) ? ~btn[3] : rst;
   Lreg <= ~rst ? 0 : (wr & ioenb & (iowadr == 1)) ? outbus[7:0] : Lreg;
   cnt0 <= limit ? 0 : cnt0 + 1;
   cnt1 <= cnt1 + limit;
-  spiCtrl <= ~rst ? 0 : (wr & ioenb & (iowadr == 5)) ? outbus[2:0] : spiCtrl;
+  spiCtrl <= ~rst ? 0 : (wr & ioenb & (iowadr == 5)) ? outbus[3:0] : spiCtrl;
   bitrate <= ~rst ? 0 : (wr & ioenb & (iowadr == 3)) ? outbus[0] : bitrate;
 end
 

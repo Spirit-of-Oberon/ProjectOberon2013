@@ -1,10 +1,10 @@
-MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 20.10.2013*)
+MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 4.2.2014*)
   IMPORT SYSTEM;
   CONST SectorLength* = 1024;
     timer = -64; spiData = -48; spiCtrl = -44;
     CARD0 = 1; SPIFAST = 4;
-    FSoffset = 10000000H; (*256M bytes*)
-    mapsize = 10000H; (*sectors, 65MB*)
+    FSoffset = 80000H; (*256MB in 512-byte blocks*)
+    mapsize = 10000H; (*1K sectors, 64MB*)
 
   TYPE Sector* = ARRAY SectorLength OF BYTE;
 
@@ -158,9 +158,17 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 20.10.2013*)
     REPEAT SPI(255); DEC(i) UNTIL (data < 80H) OR (i = 0)
   END SPICmd;
 
+  PROCEDURE SDShift(VAR n: INTEGER);
+    VAR data: INTEGER;
+  BEGIN SPICmd(58, 0);  (*CMD58 get card capacity bit*)
+    SYSTEM.GET(spiData, data); SPI(-1);
+    IF (data # 0) OR ~SYSTEM.BIT(spiData, 6) THEN n := n * 512 END ;  (*non-SDHC card*)
+    SPI(-1); SPI(-1); SPIIdle(1)  (*flush response*)
+  END SDShift;
+
   PROCEDURE ReadSD(src, dst: INTEGER);
     VAR i: INTEGER;
-  BEGIN SPICmd(17, src); ASSERT(data = 0); (*CMD17 read one block*)
+  BEGIN SDShift(src); SPICmd(17, src); ASSERT(data = 0); (*CMD17 read one block*)
     i := 0; (*wait for start data marker*)
     REPEAT SPI(-1); INC(i) UNTIL data = 254;
     SYSTEM.PUT(spiCtrl, SPIFAST + CARD0);
@@ -174,7 +182,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 20.10.2013*)
 
   PROCEDURE WriteSD(dst, src: INTEGER);
     VAR i, n: INTEGER; x: BYTE;
-  BEGIN SPICmd(24, dst); ASSERT(data = 0); (*CMD24 write one block*)
+  BEGIN SDShift(dst); SPICmd(24, dst); ASSERT(data = 0); (*CMD24 write one block*)
     SPI(254); (*write start data marker*)
     SYSTEM.PUT(spiCtrl, SPIFAST + CARD0);
     FOR i := 0 TO 508 BY 4 DO
@@ -186,7 +194,7 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 20.10.2013*)
     ASSERT(data MOD 32 = 5); SPIIdle(1) (*deselect card*)
   END WriteSD;
 
-  PROCEDURE InitSecMap*;  (*actuall: init sector map*)
+  PROCEDURE InitSecMap*;
     VAR i: INTEGER;
   BEGIN NofSectors := 0; sectorMap[0] := {0 .. 31}; sectorMap[1] := {0 .. 31};
     FOR i := 2 TO mapsize DIV 32 - 1 DO sectorMap[i] := {} END
@@ -214,14 +222,14 @@ MODULE Kernel;  (*NW/PR  11.4.86 / 27.12.95 / 20.10.2013*)
 
   PROCEDURE GetSector*(src: INTEGER; VAR dst: Sector);
   BEGIN src := src DIV 29; ASSERT(SYSTEM.H(0) = 0);
-    src := src * SectorLength + FSoffset;
-    ReadSD(src, SYSTEM.ADR(dst)); ReadSD(src+512, SYSTEM.ADR(dst)+512) 
+    src := src * 2 + FSoffset;
+    ReadSD(src, SYSTEM.ADR(dst)); ReadSD(src+1, SYSTEM.ADR(dst)+512) 
   END GetSector;
   
   PROCEDURE PutSector*(dst: INTEGER; VAR src: Sector);
   BEGIN dst := dst DIV 29; ASSERT(SYSTEM.H(0) =  0);
-    dst := dst * SectorLength + FSoffset;
-    WriteSD(dst, SYSTEM.ADR(src)); WriteSD(dst+512, SYSTEM.ADR(src)+512)
+    dst := dst * 2 + FSoffset;
+    WriteSD(dst, SYSTEM.ADR(src)); WriteSD(dst+1, SYSTEM.ADR(src)+512)
   END PutSector;
 
 (*-------- Miscellaneous procedures----------*)

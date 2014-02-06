@@ -86,13 +86,6 @@ NET "SRdat[29]" LOC = "K2";
 NET "SRdat[30]" LOC = "M1";
 NET "SRdat[31]" LOC = "N1";
 
-# SPI
-NET "MOSI" LOC = "C11";
-NET "SCLK" LOC = "E10";
-NET "SS[0]" LOC = "D11";
-NET "SS[1]" LOC = "C12";
-NET "MISO" LOC = "C10" |PULLUP;
-
 # VGA port
 NET "Hsync"  LOC = "R9";
 NET "Vsync"  LOC = "T10";
@@ -104,11 +97,16 @@ NET "RGB[2]" LOC = "R12";
 NET "PS2C" LOC = "M16" |PULLUP;
 NET "PS2D" LOC = "M15" |PULLUP;
 
-# NW mouse
-NET "mouse[0]" LOC = "C15" |PULLUP;
-NET "mouse[1]" LOC = "D15" |PULLUP;
-NET "mouse[2]" LOC = "E15" |PULLUP;
-NET "mouse[3]" LOC = "F15" |PULLUP;
-NET "mouse[4]" LOC = "D16" |PULLUP;
-NET "mouse[5]" LOC = "C16" |PULLUP;
-NET "mouse[6]" LOC = "E16" |PULLUP;
+# PS/2 mouse and SPI (SD-Card and Network) on A2 connector
+NET "mouse[0]" LOC = "E6" |PULLUP;  # pin 4
+NET "mouse[1]" LOC = "C5" |PULLUP;  # pin 6
+NET "MOSI[0]" LOC = "D6";  # pin 7
+NET "MOSI[1]" LOC = "B11";  # pin 29
+NET "SCLK[0]" LOC = "D8";  # pin 13
+NET "SCLK[1]" LOC = "B12";  # pin 30
+NET "SS[0]" LOC = "D5";  # pin 5
+NET "SS[1]" LOC = "A12";  # pin 31
+NET "MISO[0]" LOC = "B4" |PULLUP;  # pin 17
+NET "MISO[1]" LOC = "A10" |PULLUP;  # pin 28
+NET "NEN" LOC = "B13";  # pin 32
+
