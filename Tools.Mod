@@ -1,4 +1,12 @@
-MODULE Tools;   (*NW 7.10.2013*)
+Tools.Clear  (clear tool viewer)
+Tools.Recall   (recall closed tool viewer)
+Tools.Inspect adr len
+Tools.Sector secno
+Tools.ShowFile filename  (in hex)
+Tools.Convert filename  (selected text to txt-format)
+Tools.Id   (processor id)
+
+MODULE Tools;   (*NW 22.2.2014*)
   IMPORT SYSTEM, Kernel, Files, Modules, Input, Texts, Viewers, MenuViewers, TextFrames, Oberon;
   VAR T: Texts.Text; V: MenuViewers.Viewer; W: Texts.Writer;
 
@@ -76,47 +84,29 @@ MODULE Tools;   (*NW 7.10.2013*)
     END
   END ShowFile;
 
-  PROCEDURE ShowFiles*;
-    VAR f, adr: INTEGER; ch: CHAR; M: Modules.Module;
-  BEGIN Modules.Load("Files", M); SYSTEM.GET(M.data + 90H, f);
-    WHILE f # 0 DO
-      Texts.WriteHex(W, f); Texts.Write(W, 9X); adr := f + 28; SYSTEM.GET(adr, ch);
-      WHILE ch # 0X DO Texts.Write(W, ch); INC(adr); SYSTEM.GET(adr, ch) END ;
-      Texts.WriteLn(W); SYSTEM.GET(f, f)
-    END ;
-    Texts.Append(T, W.buf)
-  END ShowFiles;
-
-  PROCEDURE Convert*;   (*convert file to txt-format*)
-    VAR i: INTEGER; ch: CHAR;
+  PROCEDURE Convert*;   (*convert selected text to txt-format*)
+    VAR beg, end, time: LONGINT
+      ; ch: CHAR;
       T: Texts.Text; R: Texts.Reader;  (*input*)
       F: Files.File; Q: Files.Rider;   (*output*)
       S: Texts.Scanner;
-  BEGIN Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
-    IF S.class = Texts.Name THEN
-      NEW(T); Texts.Open(T, S.s);
-      IF T.len > 0 THEN
-        Texts.WriteString(W, "converting "); Texts.WriteString(W, S.s); Texts.OpenReader(R, T, 0); i := 0;
-        WHILE S.s[i] > 0X DO INC(i) END ;
-        S.s[i] := "."; S.s[i+1] := "t"; S.s[i+2] := "x"; S.s[i+3] := "t"; S.s[i+4] := 0X;
-        Texts.WriteString(W, " to  "); Texts.WriteString(W, S.s); F := Files.New(S.s);
-        IF F # NIL THEN
-          Files.Set(Q, F, 0); Texts.Read(R, ch);
-          WHILE ~R.eot DO
-            IF ch = 0DX THEN Files.Write(Q, 0DX); Files.Write(Q, 0AX) ELSE Files.Write(Q, ch) END ;
-            Texts.Read(R, ch)
-          END ;
-          Files.Register(F); Texts.WriteString(W, " done")
-        END
-      ELSE Texts.WriteString(W, " not found")
+  BEGIN Oberon.GetSelection(T, beg, end, time);
+    IF time >= 0 THEN
+      Texts.OpenScanner(S, Oberon.Par.text, Oberon.Par.pos); Texts.Scan(S);
+      Texts.WriteString(W, "converting to "); Texts.WriteString(W, S.s);
+      F := Files.New(S.s); Files.Set(Q, F, 0); Texts.OpenReader(R, T, beg); Texts.Read(R, ch);
+      WHILE ~R.eot DO
+        IF ch = 0DX THEN Files.Write(Q, 0DX); Files.Write(Q, 0AX)
+        ELSIF ch = 9X THEN  (*TAB*) Files.Write(Q, " "); Files.Write(Q, " ")
+        ELSE Files.Write(Q, ch)
+        END ;
+        Texts.Read(R, ch)
       END ;
-      Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf)
-    END
+      Files.Register(F); Texts.WriteString(W, " done")
+    ELSE Texts.WriteString(W, " not found")
+    END ;
+    Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf); Texts.Scan(S)
   END Convert;
-
-  PROCEDURE GCoff*;
-  BEGIN Oberon.Collect(-1)
-  END GCoff;
 
   PROCEDURE Id*;
   BEGIN Texts.WriteHex(W, SYSTEM.H(1)); Texts.WriteLn(W); Texts.Append(T, W.buf)
@@ -124,4 +114,3 @@ MODULE Tools;   (*NW 7.10.2013*)
 
 BEGIN Texts.OpenWriter(W); T := TextFrames.Text(""); OpenViewer(T, "Tools.Text")
 END Tools.
-

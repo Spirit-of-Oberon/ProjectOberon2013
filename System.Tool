@@ -6,7 +6,7 @@ Edit.ChangeFont Oberon10b.Scn.Fnt
 System.Directory ^
   *.Mod  *.Bak  *.Tool  *.Text  *.Scn.Fnt  *.smb  *.rsc
 
-ORP.Compile *  ORP.Compile */s  ORP.Compile @
+ORP.Compile @  ORP.Compile @/s  ORP.Compile name~
 System.Free ~
 System.Open Draw.Tool
 System.CopyFiles ~
@@ -22,4 +22,3 @@ Tools.Inspect 0
 Tools.Sector 1
 Tools.ShowFile 
 Tools.Recall  Tools.Clear
-Tools.ShowFiles  Tools.GCoff  Tools.Read  Tools.Write 
