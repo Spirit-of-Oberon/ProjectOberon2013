@@ -1,4 +1,4 @@
-MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 10.10.2013*)
+MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 26.3.2014*)
   IMPORT Files, Fonts;
 
   CONST (*scanner symbol classes*)
@@ -442,19 +442,17 @@ MODULE Texts; (*JG 21.11.90 / NW 11.7.90 / 24.12.95 / 22.11.10 / 10.10.2013*)
   PROCEDURE WriteInt* (VAR W: Writer; x, n: LONGINT);
     VAR i: INTEGER; x0: LONGINT;
       a: ARRAY 10 OF CHAR;
-  BEGIN i := 0;
-    IF x < 0 THEN
-      IF x = 0 THEN WriteString(W, " -2147483648")
-      ELSE DEC(n); x0 := -x
-      END
-    ELSE x0 := x
-    END;
-    REPEAT
-      a[i] := CHR(x0 MOD 10 + 30H); x0 := x0 DIV 10; INC(i)
-    UNTIL x0 = 0;
-    WHILE n > i DO Write(W, " "); DEC(n) END;
-    IF x < 0 THEN Write(W, "-") END;
-    REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+  BEGIN
+    IF ROR(x, 31) = 1 THEN WriteString(W, " -2147483648")
+    ELSE i := 0;
+      IF x < 0 THEN DEC(n); x0 := -x ELSE x0 := x END;
+      REPEAT
+        a[i] := CHR(x0 MOD 10 + 30H); x0 := x0 DIV 10; INC(i)
+      UNTIL x0 = 0;
+      WHILE n > i DO Write(W, " "); DEC(n) END;
+      IF x < 0 THEN Write(W, "-") END;
+      REPEAT DEC(i); Write(W, a[i]) UNTIL i = 0
+    END
   END WriteInt;
 
   PROCEDURE WriteHex* (VAR W: Writer; x: LONGINT);

@@ -10,7 +10,7 @@ MODULE ORS; (* NW 19.9.93 / 10.10.2013  Scanner in Oberon-07*)
   If Get delivers ident, then the identifier (a string) is in variable id, if int or char
   in ival, if real in rval, and if string in str (and slen) *)
   
-  CONST IdLen* = 32; WS = 4; (*Word size*)
+  CONST IdLen* = 32;
     NKW = 34;  (*nof keywords*)
     maxExp = 38; stringBufSize = 256;
   
@@ -29,7 +29,6 @@ MODULE ORS; (* NW 19.9.93 / 10.10.2013  Scanner in Oberon-07*)
     else* = 55; elsif* = 56; until* = 57; return* = 58;
     array* = 60; record* = 61; pointer* = 62; const* = 63; type* = 64;
     var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69;
-    eof = 70;
 
   TYPE Ident* = ARRAY IdLen OF CHAR;
 

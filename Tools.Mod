@@ -1,11 +1,3 @@
-Tools.Clear  (clear tool viewer)
-Tools.Recall   (recall closed tool viewer)
-Tools.Inspect adr len
-Tools.Sector secno
-Tools.ShowFile filename  (in hex)
-Tools.Convert filename  (selected text to txt-format)
-Tools.Id   (processor id)
-
 MODULE Tools;   (*NW 22.2.2014*)
   IMPORT SYSTEM, Kernel, Files, Modules, Input, Texts, Viewers, MenuViewers, TextFrames, Oberon;
   VAR T: Texts.Text; V: MenuViewers.Viewer; W: Texts.Writer;
@@ -114,3 +106,11 @@ MODULE Tools;   (*NW 22.2.2014*)
 
 BEGIN Texts.OpenWriter(W); T := TextFrames.Text(""); OpenViewer(T, "Tools.Text")
 END Tools.
+
+Tools.Clear  (clear tool viewer)
+Tools.Recall   (recall closed tool viewer)
+Tools.Inspect adr len
+Tools.Sector secno
+Tools.ShowFile filename  (in hex)
+Tools.Convert filename  (selected text to txt-format)
+Tools.Id   (processor id)
