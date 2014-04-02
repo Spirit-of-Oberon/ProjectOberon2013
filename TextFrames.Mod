@@ -2,7 +2,7 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013*)
   IMPORT Modules, Input, Display, Viewers, Fonts, Texts, Oberon, MenuViewers;
 
   CONST replace* = 0; insert* = 1; delete* = 2; unmark* = 3; (*message id*)
-    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; FrameColor = 1;
+    BS = 8X; TAB = 9X; CR = 0DX; DEL = 7FX; FrameColor = 1; CRSL = 11X; CRSR = 12X;
 
   TYPE Line = POINTER TO LineDesc;
     LineDesc = RECORD
@@ -648,6 +648,12 @@ MODULE TextFrames; (*JG 8.10.90 / NW 10.5.2013*)
     ELSIF (20X <= ch) & (ch <= DEL) OR (ch = CR) OR (ch = TAB) THEN
       KW.fnt := fnt; KW.col := col; KW.voff := voff; Texts.Write(KW, ch);
       Texts.Insert(F.text, F.carloc.pos, KW.buf);
+      SetCaret(F, F.carloc.pos + 1)
+    ELSIF (ch = CRSL) & (F.carloc.pos > 0) THEN
+      FlipCaret(F);
+      SetCaret(F, F.carloc.pos - 1)
+    ELSIF (ch = CRSR) & (F.carloc.pos < F.text.len) THEN
+      FlipCaret(F);
       SetCaret(F, F.carloc.pos + 1)
     END
   END Write;
