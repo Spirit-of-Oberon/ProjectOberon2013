@@ -1,4 +1,4 @@
-MODULE ORP; (*N. Wirth 1.7.97 / 15.12.2013  Oberon compiler for RISC in Oberon-07*)
+MODULE ORP; (*N. Wirth 1.7.97 / 10.4.2014  Oberon compiler for RISC in Oberon-07*)
   IMPORT Texts, Oberon, ORS, ORB, ORG;
   (*Author: Niklaus Wirth, 2011.
     Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
@@ -611,7 +611,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.12.2013  Oberon compiler for RISC in Oberon-0
     ELSIF sym = ORS.comma THEN ORS.Get(sym); ArrayType(typ.base)
     ELSE ORS.Mark("missing OF"); typ.base := ORB.intType
     END ;
-    IF len >= 0 THEN typ.size := len * typ.base.size ELSE typ.size := 2*ORG.WordSize  (*array desc*) END ;
+    IF len >= 0 THEN typ.size := (len * typ.base.size + 3) DIV 4 * 4 ELSE typ.size := 2*ORG.WordSize  (*array desc*) END ;
     typ.form := ORB.Array; typ.len := len; type := typ
   END ArrayType;
 
@@ -657,7 +657,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.12.2013  Oberon compiler for RISC in Oberon-0
       bot := obj;
       IF sym = ORS.semicolon THEN ORS.Get(sym) ELSIF sym # ORS.end THEN ORS.Mark(" ; or END") END
     END ;
-    typ.form := ORB.Record; typ.dsc := bot; typ.size := offset; type := typ
+    typ.form := ORB.Record; typ.dsc := bot; typ.size := (offset + 3) DIV 4 * 4; type := typ
   END RecordType;
 
   PROCEDURE FPSection(VAR adr: LONGINT; VAR nofpar: INTEGER);
@@ -974,7 +974,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.12.2013  Oberon compiler for RISC in Oberon-0
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  15.12.2013");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  10.4.2014");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := ORB.Var; dummy.type := ORB.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0
