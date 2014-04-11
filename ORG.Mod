@@ -1,4 +1,4 @@
-MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
+MODULE ORG; (* NW  10.4.2014  code generator in Oberon-07 for RISC*)
   IMPORT SYSTEM, Files, ORS, ORB;
   (*Code generator for Oberon compiler for RISC processor.
      Procedural interface to Parser OSAP; result in array "code".
@@ -41,7 +41,7 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
     RH: LONGINT;  (*available registers R[0] ... R[H-1]*)
     curSB: LONGINT;  (*current static base in SB*)
     fixorgP, fixorgD, fixorgT: LONGINT;   (*origins of lists of locations to be fixed up by loader*)
-    check, inhibitCalls: BOOLEAN;  (*emit run-time checks*)
+    check: BOOLEAN;  (*emit run-time checks*)
     version: INTEGER;  (* 0 = RISC-0, 1 = RISC-5 *)
     
     relmap: ARRAY 6 OF INTEGER;  (*condition codes for relations*)
@@ -83,7 +83,7 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
 
   PROCEDURE incR;
   BEGIN
-    IF RH < MT THEN INC(RH) ELSE ORS.Mark("register stack overflow") END
+    IF RH < MT-1 THEN INC(RH) ELSE ORS.Mark("register stack overflow") END
   END incR;
 
   PROCEDURE CheckRegs*;
@@ -93,18 +93,24 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   END CheckRegs;
 
   PROCEDURE SaveRegs(r: LONGINT); (* R[0 .. r-1] to be saved; R[r .. RH-1] to be moved down*)
-    VAR rs, rd: LONGINT;  (*r > 0*)
+    VAR rs, rd: LONGINT;
   BEGIN rs := r; rd := 0;
-    REPEAT DEC(rs); Put1(Sub, SP, SP, 4); Put2(Str, rs, SP, 0) UNTIL rs = 0;
-    rs := r; rd := 0;
-    WHILE rs < RH DO Put0(Mov, rd, 0, rs); INC(rs); INC(rd) END ;
-    RH := rd
+    IF r > 0 THEN
+      Put1(Sub, SP, SP, 4*r); rs := r;
+      REPEAT DEC(rs); Put2(Str, rs, SP, rs*4) UNTIL rs = 0;
+      rs := r; rd := 0;
+      WHILE rs < RH DO Put0(Mov, rd, 0, rs); INC(rs); INC(rd) END ;
+      RH := rd
+    END
   END SaveRegs;
 
   PROCEDURE RestoreRegs(r: LONGINT; VAR x: Item); (*R[0 .. r-1] to be restored*)
     VAR rd: LONGINT;  (*r > 0*)
-  BEGIN Put0(Mov, r, 0, 0); rd := 0;
-    REPEAT Put2(Ldr, rd, SP, 0); Put1(Add, SP, SP, 4); INC(rd) UNTIL rd = r
+  BEGIN rd := 0;
+    IF r > 0 THEN Put0(Mov, r, 0, 0);
+      REPEAT Put2(Ldr, rd, SP, rd*4); INC(rd) UNTIL rd = r;
+      Put1(Add, SP, SP, rd*4)
+    END
   END RestoreRegs;
 
   PROCEDURE SetCC(VAR x: Item; n: LONGINT);
@@ -112,7 +118,7 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   END SetCC;
 
   PROCEDURE Trap(cond, num: LONGINT);
-  BEGIN Put3(BLR, cond, ORS.Pos()*100H + num*10H + MT)
+  BEGIN num := ORS.Pos()*100H + num*10H + MT; Put3(BLR, cond, num)
   END Trap;
 
   (*handling of forward reference, fixups of branch addresses and constant tables*)
@@ -321,14 +327,15 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   PROCEDURE DeRef*(VAR x: Item);
   BEGIN
     IF x.mode = ORB.Var THEN
-      IF x.r > 0 THEN (*local*) Put2(Ldr, RH, SP, x.a) ELSE GetSB(x.r); Put2(Ldr, RH, SB, x.a) END ;
-      NilCheck; x.r := RH; incR
+      IF x.r > 0 THEN (*local*) x.mode := ORB.Par; x.b := 0
+      ELSE GetSB(x.r); Put2(Ldr, RH, SB, x.a); NilCheck; x.mode := RegI; x.r := RH; INC(RH); x.a := 0
+      END
     ELSIF x.mode = ORB.Par THEN
-      Put2(Ldr, RH, SP, x.a); Put2(Ldr, RH, RH, x.b); NilCheck; x.r := RH; incR
-    ELSIF x.mode = RegI THEN Put2(Ldr, x.r, x.r, x.a); NilCheck
+      Put2(Ldr, RH, SP, x.a); Put2(Ldr, RH, RH, x.b); NilCheck;
+      x.mode := RegI; x.r := RH; incR; x.a := 0; x.b := 0
+    ELSIF x.mode = RegI THEN Put2(Ldr, x.r, x.r, x.a); NilCheck; x.a := 0
     ELSIF x.mode # Reg THEN ORS.Mark("bad mode in DeRef")
-    END ;
-    x.mode := RegI; x.a := 0; x.b := 0
+    END
   END DeRef;
 
   PROCEDURE Q(T: ORB.Type; VAR dcw: LONGINT);
@@ -369,9 +376,10 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   END BuildTD;
 
   PROCEDURE TypeTest*(VAR x: Item; T: ORB.Type; varpar, isguard: BOOLEAN);
+    VAR x0: Item;
   BEGIN (*fetch tag into RH*)
     IF varpar THEN Put2(Ldr, RH, SP, x.a+4)
-    ELSE load(x); NilCheck; Put2(Ldr, RH, x.r, -8)
+    ELSE x0 := x; load(x0); NilCheck; Put2(Ldr, RH, x0.r, -8)
     END ;
     Put2(Ldr, RH, RH, T.nofpar*4); incR;
     loadTypTagAdr(T);  (*tag of T*)
@@ -762,10 +770,7 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   PROCEDURE PrepCall*(VAR x: Item; VAR r: LONGINT);
   BEGIN
     IF x.type.form = ORB.Proc THEN
-      IF x.mode # ORB.Const THEN
-        load(x); code[pc-1] := code[pc-1] + 0B000000H; x.r := 11; DEC(RH); inhibitCalls := TRUE;
-        IF check THEN Trap(EQ, 5) END
-      END
+      IF x.mode > ORB.Par THEN ORS.Mark("intractable call") END
     ELSE ORS.Mark("not a procedure")
     END ;
     r := RH
@@ -773,9 +778,8 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
 
   PROCEDURE Call*(VAR x: Item; r: LONGINT);
   BEGIN
-    IF inhibitCalls & (x.r # 11) THEN ORS.Mark("inadmissible call") ELSE inhibitCalls := FALSE END ;
-    IF r > 0 THEN SaveRegs(r) END ;
     IF x.type.form = ORB.Proc THEN
+      IF x.type.base.form # ORB.NoTyp THEN SaveRegs(r) END ;
       IF x.mode = ORB.Const THEN
         IF x.r >= 0 THEN Put3(BL, 7, (x.a DIV 4)-pc-1)
         ELSE (*imported*)
@@ -784,14 +788,14 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
           ELSE ORS.Mark("fixup impossible")
           END
         END
-      ELSE Put3(BLR, 7, x.r)
+      ELSE load(x);
+        IF check THEN Trap(EQ, 5) END ;
+        Put3(BLR, 7, x.r)
       END
     ELSE ORS.Mark("not a procedure")
     END ;
     IF x.type.base.form = ORB.NoTyp THEN RH := 0
-    ELSE
-      IF r > 0 THEN RestoreRegs(r, x) END ;
-      x.mode := Reg; x.r := r; RH := r+1
+    ELSE RestoreRegs(r, x); x.mode := Reg; x.r := r; RH := r+1
     END ;
     invalSB
   END Call;
@@ -1005,8 +1009,7 @@ MODULE ORG; (* NW  10.10.2013  code generator in Oberon-07 for RISC*)
   END Condition;
 
   PROCEDURE Open*(v: INTEGER);
-  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; fixorgP := 0; fixorgD := 0; fixorgT := 0;
-    check := v # 0; version := v; inhibitCalls := FALSE;
+  BEGIN pc := 0; tdx := 0; strx := 0; RH := 0; fixorgP := 0; fixorgD := 0; fixorgT := 0; check := v # 0; version := v;
     IF v = 0 THEN pc := 8 END
   END Open;
 
