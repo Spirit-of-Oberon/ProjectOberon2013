@@ -10,6 +10,7 @@ http://projectoberon.com/
 
 Emulator for the Oberon RISC machine:  
 https://github.com/pdewacht/oberon-risc-emu  
-http://schierlm.github.io/OberonEmulator
+http://schierlm.github.io/OberonEmulator  
+https://github.com/MGreim/riscpas_repo
 
 ![Oberon V5](/oberonV5.jpg "Oberon V5")
