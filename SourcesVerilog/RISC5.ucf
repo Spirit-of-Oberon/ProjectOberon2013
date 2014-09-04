@@ -1,12 +1,12 @@
 NET "CLK50M" LOC = "T9" ;
 
-NET "TxD" LOC = "R13"; 
+NET "TxD" LOC = "R13";
 NET "RxD" LOC = "T13";
 
-NET "btn[0]" LOC = "M13"; 
-NET "btn[1]" LOC = "M14"; 
-NET "btn[2]" LOC = "L13"; 
-NET "btn[3]" LOC = "L14"; 
+NET "btn[0]" LOC = "M13";
+NET "btn[1]" LOC = "M14";
+NET "btn[2]" LOC = "L13";
+NET "btn[3]" LOC = "L14";
 
 NET "swi[0]" LOC = "F12";
 NET "swi[1]" LOC = "G12";
@@ -110,3 +110,16 @@ NET "MISO[0]" LOC = "B4" |PULLUP;  # pin 17
 NET "MISO[1]" LOC = "A10" |PULLUP;  # pin 28
 NET "NEN" LOC = "B13";  # pin 32
 
+# PS/2 mouse on B1 connector (remove in final version)
+#NET "mouse[0]" LOC = "T3" |PULLUP;  # pin 5
+#NET "mouse[1]" LOC = "N11" |PULLUP;  # pin 7
+
+# general-purpose I/O port
+NET "gpio[0]" LOC = "C10";
+NET "gpio[1]" LOC = "E10";
+NET "gpio[2]" LOC = "C11";
+NET "gpio[3]" LOC = "D11";
+NET "gpio[4]" LOC = "C12";
+NET "gpio[5]" LOC = "D12";
+NET "gpio[6]" LOC = "E11";
+NET "gpio[7]" LOC = "B16";

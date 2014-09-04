@@ -1,5 +1,5 @@
-`timescale 1ns / 1ps  // NW 27.5.09 / 14.2.2013
-// with SRAM, byte access, and flt.-pt.
+`timescale 1ns / 1ps  // NW 27.5.09 / 8.8.2014
+// with SRAM, byte access, flt.-pt., and gpio
 // PS/2 mouse and network 7.1.2014 PDR
 
 module RISC5Top(
@@ -20,7 +20,8 @@ module RISC5Top(
   output hsync, vsync, // video controller
   output [2:0] RGB,
   inout PS2C, PS2D,    // keyboard
-  inout [1:0] mouse);
+  inout [1:0] mouse,
+  inout [7:0] gpio);
 
 // IO addresses for input / output
 // 0  milliseconds / --
@@ -31,6 +32,8 @@ module RISC5Top(
 // 5  SPI status / SPI control
 // 6  PS2 keyboard / --
 // 7  mouse / --
+// 8  general-purpose I/O data
+// 9  general-purpose I/O tri-state control
 
 wire clk, clk50;
 reg rst, clk25;
@@ -55,6 +58,8 @@ wire [31:0] spiRx;
 wire spiStart, spiRdy;
 reg [3:0] spiCtrl;
 wire [17:0] vidadr;
+reg [7:0] gpout, gpoc;
+wire [7:0] gpin;
 
 RISC5 riscx(.clk(clk), .rst(rst), .rd(rd), .wr(wr), .ben(be), .stallX(dspreq),
    .adr(adr), .codebus(inbus1), .inbus(inbus), .outbus(outbus));
@@ -81,8 +86,10 @@ assign inbus = ~ioenb ? inbus0 :
     (iowadr == 4) ? spiRx :
     (iowadr == 5) ? {31'b0, spiRdy} :
     (iowadr == 6) ? {3'b0, rdyKbd, dataMs} :
-    (iowadr == 7) ? {24'b0, dataKbd} :	 0);
-
+    (iowadr == 7) ? {24'b0, dataKbd} :
+    (iowadr == 8) ? {24'b0, gpin} :
+	 (iowadr == 9) ? {24'b0, gpoc} : 0);
+	 
 // byte access to SRAM
 assign a0 = ~adr[1] & ~adr[0];
 assign a1 = ~adr[1] & adr[0];
@@ -115,6 +122,13 @@ generate // tri-state buffer for SRAM
   end
 endgenerate
 
+generate // tri-state buffer for gpio port
+  for (i = 0; i < 8; i = i+1)
+  begin: gpioblock
+    IOBUF gpiobuf (.I(gpout[i]), .O(gpin[i]), .IO(gpio[i]), .T(~gpoc[i]));
+  end
+endgenerate
+
 assign dataTx = outbus[7:0];
 assign startTx = wr & ioenb & (iowadr == 2);
 assign doneRx = rd & ioenb & (iowadr == 2);
@@ -133,6 +147,8 @@ begin
   cnt1 <= cnt1 + limit;
   spiCtrl <= ~rst ? 0 : (wr & ioenb & (iowadr == 5)) ? outbus[3:0] : spiCtrl;
   bitrate <= ~rst ? 0 : (wr & ioenb & (iowadr == 3)) ? outbus[0] : bitrate;
+  gpout <= (wr & ioenb & (iowadr == 8)) ? outbus[7:0] : gpout;
+  gpoc <= ~rst ? 0 : (wr & ioenb & (iowadr == 9)) ? outbus[7:0] : gpoc;
 end
 
 //The Clocks
