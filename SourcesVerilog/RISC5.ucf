@@ -110,10 +110,6 @@ NET "MISO[0]" LOC = "B4" |PULLUP;  # pin 17
 NET "MISO[1]" LOC = "A10" |PULLUP;  # pin 28
 NET "NEN" LOC = "B13";  # pin 32
 
-# PS/2 mouse on B1 connector (remove in final version)
-#NET "mouse[0]" LOC = "T3" |PULLUP;  # pin 5
-#NET "mouse[1]" LOC = "N11" |PULLUP;  # pin 7
-
 # general-purpose I/O port
 NET "gpio[0]" LOC = "C10";
 NET "gpio[1]" LOC = "E10";

@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps  // NW 27.5.09 / 8.8.2014
+`timescale 1ns / 1ps  // NW 27.5.09 / 14.10.2014
 // with SRAM, byte access, flt.-pt., and gpio
 // PS/2 mouse and network 7.1.2014 PDR
 
@@ -43,6 +43,8 @@ wire [3:0] iowadr; // word address
 wire rd, wr, be, ioenb, dspreq;
 wire a0, a1, a2, a3;
 wire[31:0] inbus, inbus0, inbus1, outbus, outbus1;
+wire [7:0] inbusL, outbusB0, outbusB1, outbusB2, outbusB3;
+wire [23:0] inbusH;
 
 wire [7:0] dataTx, dataRx, dataKbd;
 wire rdyRx, doneRx, startTx, rdyTx, rdyKbd, doneKbd;
@@ -97,22 +99,23 @@ assign a2 = adr[1] & ~adr[0];
 assign a3 = adr[1] & adr[0];
 assign SRce0 = be & adr[1];
 assign SRce1 = be & ~adr[1];
+assign SRbe0 = be & adr[0];
+assign SRbe1 = be & ~adr[0];
 assign SRwe = ~wr | clk25;
 assign SRoe = wr;
-assign SRbe[0] = be & adr[0];
-assign SRbe[1] = be & ~adr[0];
-assign SRbe[2] = SRbe[0];
-assign SRbe[3] = SRbe[1];
+assign SRbe = {SRbe1, SRbe0, SRbe1, SRbe0};
 assign SRadr = dspreq ? vidadr : adr[19:2];
 
-assign inbus0[7:0] = (~be | a0) ? inbus1[7:0] :
+assign inbusL = (~be | a0) ? inbus1[7:0] :
   a1 ? inbus1[15:8] : a2 ? inbus1[23:16] : inbus1[31:24];
-assign inbus0[31:8] = ~be ? inbus1[31:8] : 24'b0;
+assign inbusH = ~be ? inbus1[31:8] : 24'b0;
+assign inbus0 = {inbusH, inbusL};assign outbus1[7:0] = outbus[7:0];
 
-assign outbus1[7:0] = outbus[7:0];
-assign outbus1[15:8] = be & a1 ? outbus[7:0] : outbus[15:8];
-assign outbus1[23:16] = be & a2 ? outbus[7:0] : outbus[23:16];
-assign outbus1[31:24] = be & a3 ? outbus[7:0] : outbus[31:24];
+assign outbusB0 = outbus[7:0];
+assign outbusB1 = be & a1 ? outbus[7:0] : outbus[15:8];
+assign outbusB2 = be & a2 ? outbus[7:0] : outbus[23:16];
+assign outbusB3 = be & a3 ? outbus[7:0] : outbus[31:24];
+assign outbus1 = {outbusB3, outbusB2, outbusB1, outbusB0};
 
 genvar i;
 generate // tri-state buffer for SRAM

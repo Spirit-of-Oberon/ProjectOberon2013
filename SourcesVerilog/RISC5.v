@@ -1,5 +1,5 @@
-`timescale 1ns / 1ps  // NW 22.12.2011 / 10.10.2013  new instr set
-//  RISC in "Compiler Construction", SRAM, byte access, flt-pt
+`timescale 1ns / 1ps  // NW 22.12.2011 / 18.11.2014
+//  RISC in "Compiler Construction"
 
 module RISC5(
 input clk, rst, stallX,
@@ -34,9 +34,8 @@ wire regwr;
 wire stall, stallL, stallM, stallD, stallFA, stallFM, stallFD;
 wire [1:0] sc1, sc0;  // shift counts
 
-wire [31:0] A, B, C0, C1, regmux;
+wire [31:0] A, B, C0, C1, aluRes, regmux;
 wire [31:0] s1, s2, s3, t1, t2, t3;
-wire [32:0] aluRes;
 wire [31:0] quotient, remainder;
 wire [63:0] product;
 wire [31:0] fsum, fprod, fquot;
@@ -135,7 +134,7 @@ assign t3 = C1[4] ? {t2[15:0], 16'b0} : t2;
 assign aluRes =
   MOV ? (q ?
     (~u ? {{16{v}}, imm} : {imm, 16'b0}) :
-    (~u ? C0 : (~v ? H : {N, Z, C, OV, 20'b0, 8'b11010000}))) :
+    (~u ? C0 : (~v ? H : {N, Z, C, OV, 20'b0, 8'b01010000}))) :
   LSL ? t3 :
   (ASR|ROR) ? s3 :
   AND ? B & C1 :
@@ -173,7 +172,7 @@ assign pcmux = ~rst ? StartAdr :
   
 assign sa = aluRes[31];
 assign sb = B[31];
-assign sc = C1[31] ^ SUB;
+assign sc = C1[31];
 
 assign stall = stallL | stallM | stallD | stallFA | stallFM | stallFD | stallX;
 assign stallL = (LDR|STR) & ~stall1;
@@ -185,9 +184,11 @@ always @ (posedge clk) begin
   stall1 <= stallX ? stall1 : stallL;
   R[ira0] <= regwr ? regmux : A;
   N <= regwr ? regmux[31] : N;
-  Z <= regwr ? (regmux[31:0] == 0) : Z;
-  C <= (ADD|SUB) ? aluRes[32] : C;
-  OV <= (ADD|SUB) ? (sa & ~sb & ~sc | ~sa & sb & sc) : OV;
+  Z <= regwr ? (regmux == 0) : Z;
+  C <= ADD ? (~sb&sc&~sa) | (sb&sc&sa) | (sb&~sa) :
+	 SUB ? (~sb&sc&~sa) | (sb&sc&sa) | (~sb&sa) : C;
+  OV <= ADD ? (sa&~sb&~sc) | (~sa&sb&sc): 
+	 SUB ? (sa&~sb&sc) | (~sa&sb&~sc) : OV;
   H <= MUL ? product[63:32] : DIV ? remainder : H;
 end 
 endmodule 
