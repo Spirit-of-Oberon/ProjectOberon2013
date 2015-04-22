@@ -1,0 +1,98 @@
+MODULE FPAdder(   (*NW 2.11.2014*)
+  IN clk, run, u, v: BIT; x, y: WORD;
+  OUT stall: BIT; z: WORD);
+
+  REG (clk) Sum: [27] BIT;  (*pipe reg*)
+    stallR: BIT;
+
+  VAR xs, ys: BIT;  (*signs*)
+    xe, ye: [9] BIT;  (*exponents*)
+    xm, ym: [25] BIT;  (*mantissas*)
+
+    dx, dy, e0, e1: [9] BIT;
+    sx, sy: [9] BIT;  (*shift counts*)
+    sx0, sx1, sy0, sy1: [2] BIT;
+    sxh, syh: BIT;
+    x0, x1,x2, x3, y0, y1, y2, y3: [25] BIT;
+    s: [27] BIT;
+
+    z24, z22, z20, z18, z16, z14, z12, z10, z8, z6, z4, z2: BIT;
+    sc: [5] BIT;  (*shift count*)
+    sc0, sc1: [2] BIT;
+    t1, t2, t3: [25] BIT;
+
+BEGIN  (*unpack*)
+  xs := x.31;
+  xe := u -> 150'9 : {0'1, x[30:23]};
+  xm := {(~u | x.23), x[22:0], 0'1};
+  ys := y.31;
+  ye := {0'1, y[30:23]};
+  ym := {(~u & ~v), y[22:0], 0'1};
+  dx := xe - ye; dy := ye - xe;
+  e0 := dx.8 -> ye : xe;
+  sx := dy.8 -> 0 : dy; sy := dx.8 -> 0 : dx;
+  sx0 := sx[1:0]; sx1 := sx[3:2];
+  sy0 := sy[1:0]; sy1 := sy[3:2];
+  sxh := sx.7 | sx.6 | sx.5;  syh := sy.7 | sy.6 | sy.5;
+
+(*denormalize; right shift*)
+  x0 := (xs & ~u) -> -xm : xm;
+  x1 := (sx0 = 3) -> {xs!3, x0[24:3]} :
+    (sx0 = 2) -> {xs!2, x0[24:2]} :
+    (sx0 = 1) -> {xs, x0[24:1]} : x0;
+  x2 := (sx1 = 3) -> {xs!12, x1[24:12]} :
+    (sx1 = 2) -> {xs!8, x1[24:8]} :
+    (sx1 = 1) -> {xs!4, x1[24:4]} : x1;
+  x3 := sxh -> {xs!25} : sx.4 -> {xs!16, x2[24:16]} : x2;
+
+  y0 := (ys & ~u) -> -ym : ym;
+  y1 := (sy0 = 3) -> {ys!3, y0[24:3]} :
+    (sy0 = 2) -> {ys!2, y0[24:2]} :
+    (sy0 = 1) -> {ys, y0[24:1]} : y0;
+  y2 := (sy1 = 3) -> {ys!12, y1[24:12]} :
+    (sy1 = 2) -> {ys!8, y1[24:8]} :
+    (sy1 = 1) -> {ys!4, y1[24:4]} : y1;
+  y3 := syh -> {ys!25} : (sy.4 -> {ys!16, y2[24:16]} : y2);
+  
+(*addition*)
+  Sum := {xs, xs, x3} + {ys, ys, y3}; s := (Sum.26 -> -Sum : Sum) + 1;   (*round*)
+
+(*post-normalize, shift left;  sc = shift count*)
+  z24 := ~s.25 & ~s.24;
+  z22 := z24 & ~s.23 & ~s.22;
+  z20 := z22 & ~s.21 & ~s.20;
+  z18 := z20 & ~s.19 & ~s.18;
+  z16 := z18 & ~s.17 & ~s.16;
+  z14 := z16 & ~s.15 & ~s.14;
+  z12 := z14 & ~s.13 & ~s.12;
+  z10 := z12 & ~s.11 & ~s.10;
+  z8 := z10 & ~s.9 & ~s.8;
+  z6 := z8 & ~s.7 & ~s.6;
+  z4 := z6 & ~s.5 & ~s.4;
+  z2 := z4 & ~s.3 & ~s.2;
+
+  sc := {z10,
+    z18 & (s.17 | s.16 | s.15 | s.14 | s.13 | s.12 | s.11 | s.10) | z2,
+    z22 & (s.21 | s.20 | s.19 | s.18)  |  z14 & (s.13 | s.12 | s.11 | s.10)  |  z6 & (s.5 | s.4 | s.3 | s.2),
+    z24 & (s.23 | s.22)  |  z20 & (s.19 | s.18)  |  z16 & (s.15 | s.14)  |  z12 & (s.11 | s.10)  |  z8 & (s.7 | s.6)  |  z4 & (s.3 | s.2),
+    ~s.25 & s.24 | z24 & ~s.23 & s.22 | z24 & ~s.23 & s.22 |  z22 & ~s.21 & s.20 | z20 & ~s.19 & s.18 | z18 & ~s.17 & s.16 |  
+      z16 & ~s.15 & s.14 | z14 & ~s.13 & s.12 | z12 & ~s.11 & s.10 | z10 & ~s.9 & s.8 | z8 & ~s.7 & s.6 | z6 & ~s.5 & s.4 | z4 & ~s.3 & s.2};
+
+  e1 := e0 - {0'4, sc} + 1;
+  sc0 := sc[1:0]; sc1 := sc[3:2];
+  t1 := (sc0 = 3) -> {s[22:1], 0'3} :
+    (sc0 = 2) -> {s[23:1], 0'2} :
+    (sc0 = 1) -> {s[24:1], 0'1} : s[25:1];
+  t2 := (sc1 = 3) -> {t1[12:0], 0'12} :
+    (sc1 = 2) -> {t1[16:0], 0'8} :
+    (sc1 = 1) -> {t1[20:0], 0'4} : t1;
+  t3 := sc.4 -> {t2[8:0], 0'16} : t2;
+
+  stall := run & ~stallR;
+  stallR := stall;
+
+  z := v -> {Sum.26 ! 7, Sum[25:1]} :   (*FLOOR*)
+    x[30:0] = 0 -> (~u -> y : 0) :
+    y[30:0] = 0 -> x :
+    (t3 = 0) | e1.8 -> 0 : {Sum.26, e1[7:0], t3[23:1]}
+END FPAdder.

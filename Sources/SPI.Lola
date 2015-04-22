@@ -1,0 +1,25 @@
+MODULE SPI (
+  IN clk, rst, start, fast: BIT; dataTx: WORD;
+  OUT dataRx: WORD; rdy: BIT;
+  IN MISO: BIT;
+  OUT MOSI, SCLK: BIT);
+
+  REG (clk) rdyR: BIT;
+    shreg: WORD;
+    tick: [6] BIT;
+    bitcnt: [5] BIT;
+  VAR endbit, endtick: BIT;
+
+BEGIN endtick := fast -> (tick = 1) : (tick = 63);    (*25 MHz clock*)
+  endbit := fast -> (bitcnt = 31) : (bitcnt = 7);
+  rdy := rdyR;
+  dataRx := fast -> shreg : {0'24, shreg[7:0]};
+  MOSI := (~rst | rdyR) -> 1 : shreg.7;
+  SCLK := (~rst | rdyR) -> 1 : (fast -> tick.0 : tick.5);
+
+  tick := (~rst | rdyR | endtick) -> 0 : tick + 1;
+  rdyR := (~rst | endtick & endbit) | ~start & rdyR;
+  bitcnt := (~rst | start) -> 0 : (endtick & ~endbit) -> bitcnt + 1 : bitcnt;
+  shreg := ~rst -> $FFFFFFFF'32 : start -> dataTx :
+    endtick -> {shreg[30:24], MISO, shreg[22:16], shreg[31], shreg[14:8], shreg[23], shreg[6:0], (fast -> shreg[15] : MISO)} : shreg;
+END SPI.

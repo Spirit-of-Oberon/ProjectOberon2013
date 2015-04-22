@@ -1,0 +1,23 @@
+MODULE RS232T (IN clk, rst: BIT;   (*NW 15.9.2014*)
+  IN start, fsel: BIT;  (*request to send a byte / freq select*)
+  IN data: BYTE; OUT rdy, TxD: BIT);
+  REG (clk) run: BIT;
+    tick: [12] BIT;
+    bitcnt: [4] BIT;
+    shreg: [9] BIT;
+  VAR endtick, endbit: BIT;
+    limit: [12] BIT;
+BEGIN limit := fsel -> 217 : 1302;
+  endtick := tick = limit;
+  endbit := bitcnt = 9;
+  rdy := ~run;
+  TxD := shreg.0;
+
+  run := (~rst | endtick & endbit) -> 0 : start -> 1 : run;
+  tick := (run & ~endtick) -> tick + 1 : 0;
+  bitcnt := (endtick & ~endbit) -> bitcnt + 1 :
+    (endtick & endbit) -> 0'4 : bitcnt;
+  shreg := ~rst -> 1 :
+    start -> {data, 0'1} :
+    endtick -> {1'1, shreg[8:1]} : shreg;
+END RS232T.
