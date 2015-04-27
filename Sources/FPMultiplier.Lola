@@ -24,7 +24,7 @@ BEGIN sign := x.31 ^ y.31;   (*xor*)
   z0 := B1.23 -> B1 : {B1[22:0], A1.23};
   z := (xe = 0) | (ye = 0) -> 0 :
     ~e1.8 -> {sign, e1[7:0], z0[22:0]} :
-    ~e1.7 -> {sign, 0FF'8H, z0[22:0]} : 0;  (*overflow*)
+    ~e1.7 -> {sign, 0FFH'8, z0[22:0]} : 0;  (*overflow*)
   stall := run & (S # 23);
 
   B2 := B1; A2 := A1;

@@ -187,7 +187,7 @@ BEGIN
   stallL := (Ldr | Str) & ~stall1;
   
   PC := pcmux;
-  PMsel := ~rst | (pcmux[17:11] = 7F'7H);
+  PMsel := ~rst | (pcmux[17:11] = 7FH'7);
   IRBuf := stall -> IRBuf : codebus;
   stall1 := stallX -> stall1 : stallL;
   R[ira0] := regwr -> regmux : A;
