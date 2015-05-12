@@ -1,0 +1,38 @@
+MODULE VID (
+  IN clk, inv: BIT;
+    viddata: WORD;
+  OUT  req: BIT;  (*SRAM read request*)
+      vidadr: [18] BIT;
+    hsync, vsync: BIT;  (*to display*)
+    RGB: [3] BIT);
+
+  CONST Org := 37FC0H; (* DFF00: adr of vcnt=1023 *)
+  TYPE DCMX3 = MODULE (IN CLKIN: BIT; OUT CLKFX: BIT) ^;
+  VAR hend, vend, vblank, xfer, vid, pclk: BIT;
+    dcmx3: DCMX3;
+  REG (pclk) hcnt: [11] BIT;
+      vcnt: [10] BIT;
+    hblank: BIT;
+    pixbuf, vidbuf: WORD;
+  REG (clk) req1: BIT;
+    hword: [5] BIT;  (*from hcnt, but latched in the clk domain*)
+
+BEGIN dcmx3 (clk, pclk);  (* pixel clock generation *)
+  hend := (hcnt = 1343); vend := (vcnt = 801);
+  vblank := (vcnt.8 & vcnt.9);   (*vcnt >= 768*)
+  hsync := ~((hcnt >= 1086) & (hcnt < 1190));   (*-ve polarity*)
+  vsync := (vcnt >= 771) & (vcnt < 776);   (*+ve polarity*)
+  xfer := (hcnt[4:0] = 6'5);   (*data delay > hcnt cycle + req cycle*)
+  vid := (pixbuf.0 ^ inv) & ~hblank & ~ vblank;
+  RGB := {vid, vid, vid};
+  vidadr := Org + {0'3, ~vcnt, hword};
+(*on pclk:*)  
+  hcnt := hend -> 0 : hcnt + 1;
+  vcnt := hend -> (vend -> 0 : vcnt + 1) : vcnt;
+  hblank := xfer -> hcnt.10 : hblank;  (*hcnt >= 1024*)
+  pixbuf := xfer -> vidbuf : {0'1, pixbuf[31:1]};
+(*on clk:*)
+  hword := hcnt[9:5];
+  req := req1; req1 := ~vblank & ~hcnt.10 & (hcnt.5 ^ hword.0);
+  vidbuf := req -> viddata : vidbuf
+END VID.

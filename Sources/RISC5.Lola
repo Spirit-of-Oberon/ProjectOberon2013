@@ -1,0 +1,201 @@
+MODULE RISC5 (IN clk, rst, stallX: BIT;  (*NW 31.10.2014*)
+  IN inbus, codebus: WORD;
+  OUT adr: [20] BIT;
+    rd, wr, ben: BIT;
+    outbus: WORD);
+  
+  CONST StartAdr = 3F800H'18;
+
+  TYPE PROM := MODULE (IN adr: [11] BIT; OUT data: WORD; IN clk: BIT) ^;
+
+    Multiplier1 := MODULE (IN clk, run, u: BIT;
+      OUT stall: BIT;
+      IN x, y: WORD;
+      OUT z: [64] BIT) ^;
+
+    Divider := MODULE (IN clk, run: BIT;
+      OUT stall: BIT;
+      IN x, y: WORD;
+      OUT quot, rem: WORD) ^;
+
+    FPAdder := MODULE (IN clk, run, u, v: BIT; OUT stall: BIT;
+      IN x, y: WORD; OUT z: WORD) ^;
+
+    FPMultiplier := MODULE (IN clk, run: BIT; OUT  stall: BIT;
+      IN x, y: WORD; OUT z: WORD) ^;
+
+    FPDivider := MODULE (IN clk, run: BIT; OUT stall: BIT;
+      IN x, y: WORD; OUT z: WORD) ^;
+
+
+  REG (clk) PC: [18] BIT;
+    IRBuf: WORD;
+    N, Z, C, OV: BIT;
+    stall1, PMsel: BIT;
+    R: [16] WORD;
+    H: WORD;
+
+  VAR IR, pmout: WORD;
+    pcmux, nxpc: [18] BIT;
+    cond, S: BIT;
+    sa, sb, sc: BIT;
+
+    p, q, u, v, w: BIT;
+    op, ira, ira0, irb, irc: [4] BIT;
+    cc: [3] BIT;
+    imm: [16] BIT;
+    off: [20] BIT;
+    
+    regwr, stall, stallL, stallM, stallD, stallFA, stallFM, stallFD: BIT;
+    sc1, sc0: [2] BIT;  (*shift counts*)
+    
+    A, B, C0, C1, aluRes, regmux: WORD;
+    s1, s2, s3, t1, t2, t3: WORD;
+    quotient, remainder: WORD;
+    product: [64] BIT;
+    fsum, fprod, fquot: WORD;
+    
+    Mov, Lsl, Asr, Ror, And, Ann, Ior, Xor, Add, Sub, Mul, Div: BIT;
+    Fadd, Fsub, Fmul, Fdiv, Ldr, Str, Br: BIT;
+
+    PM: PROM;
+    mulUnit: Multiplier1;
+    divUnit: Divider;
+    faddUnit: FPAdder;
+    fmulUnit: FPMultiplier;
+    fdivUnit: FPDivider;
+
+BEGIN
+  PM (pcmux[10:0], pmout, clk);
+  mulUnit (clk, Mul, ~u, stallM, B, C1, product);
+  divUnit (clk, Div, stallD, B, C1, quotient, remainder);
+  faddUnit (clk, Fadd|Fsub, u, v, stallFA, B, {Fsub^C0.31, C0[30:0]}, fsum);
+  fmulUnit (clk, Fmul, stallFM, B, C0, fprod);
+  fdivUnit (clk, Fdiv, stallFD, B, C0, fquot);
+
+  IR := PMsel -> pmout : IRBuf;
+  p := IR.31;  (*instruction fields*)
+  q := IR.30;
+  u := IR.29;
+  v := IR.28;
+  w := IR.16;
+  cc:= IR[26:24];
+  ira := IR[27:24];
+  irb := IR[23:20];
+  op := IR[19:16];
+  irc := IR[3:0];
+  imm := IR[15:0];
+  off := IR[19:0];
+
+  Mov := ~p & (op = 0);  (*instruction signals*)
+  Lsl := ~p & (op = 1);
+  Asr := ~p & (op = 2);
+  Ror := ~p & (op = 3);
+  And := ~p & (op = 4);
+  Ann := ~p & (op = 5);
+  Ior := ~p & (op = 6);
+  Xor := ~p & (op = 7);
+  Add := ~p & (op = 8);
+  Sub := ~p & (op = 9);
+  Mul := ~p & (op = 10);
+  Div := ~p & (op = 11);
+  Fadd := ~p & (op = 12);
+  Fsub := ~p & (op = 13);
+  Fmul := ~p & (op = 14);
+  Fdiv := ~p & (op = 15);
+
+  Ldr := p & ~q & ~u;
+  Str := p & ~q & u;
+  Br := p & q;
+
+  A := R[ira0];  (*main data path*)
+  B := R[irb];
+  C0 := R[irc];
+
+  (*ALU*)
+  ira0 := Br -> 15'4 : ira;
+  C1 := q -> {v!16, imm} : C0 ;
+  adr := stallL -> B[19:0] + off : {pcmux, 0'2};
+  rd := Ldr & ~stallX & ~stall1;
+  wr := Str & ~stallX & ~stall1;
+  ben := p & ~q & v & ~stallX & ~stall1; (*byte enable*)
+  outbus := A;
+
+  sc0 := C1[1:0];
+  sc1 := C1[3:2];
+  
+  (*right shifter*)
+  s1 := (sc0 = 3) -> {(w -> B[2:0] : {B.31 ! 3}), B[31:3]} :
+      (sc0 = 2) -> {(w -> B[1:0] : {B.31 ! 2}), B[31:2]} :
+      (sc0 = 1) -> {(w -> B.0 : B.31), B[31:1]} : B;
+  s2 := (sc1 = 3) -> {(w -> s1[11:0] : {B.31 ! 12}), s1[31:12]} :
+      (sc1 = 2) -> {(w -> s1[7:0] : {B.31 ! 8}), s1[31:8]} :
+      (sc1 = 1) -> {(w -> s1[3:0] : {B.31 ! 4}), s1[31:4]} : s1;
+  s3 := C1.4 -> {(w -> s2[15:0] : {s2.31 ! 16}), s2[31:16]} : s2;
+
+  (*left shifter*)
+  t1 := (sc0 = 3) -> {B[28:0], 0'3} :
+      (sc0 = 2) -> {B[29:0], 0'2} :
+      (sc0 = 1) -> {B[30:0], 0'1} : B;
+  t2 := (sc1 = 3) -> {t1[19:0], 0'12} :
+      (sc1 = 2) -> {t1[23:0], 0'8} :
+      (sc1 = 1) -> {t1[27:0], 0'4} : t1;
+  t3 := C1.4 -> {t2[15:0], 0'16} : t2;
+  
+  aluRes :=
+    Mov -> (q ->
+      (~u -> {v!16, imm} : {imm, 0'16}) :
+      (~u -> C0 : (~v -> H : {N, Z, C, OV, 0'20, 54H'8}))):
+    Lsl -> t3 :
+    (Asr | Ror) -> s3 :
+    And -> B & C1 :
+    Ann -> B & ~C1 :
+    Ior -> B | C1 :
+    Xor -> B ^ C1 :
+    Add -> B + C1 + (u&C) :
+    Sub -> B - C1 - (u&C) :
+    Mul -> product[31:0] :
+    Div -> quotient :
+    (Fadd|Fsub) -> fsum :
+    Fmul -> fprod :
+    Fdiv -> fquot : 0;
+
+  regwr := ~p & ~stall | (Ldr & ~stallX & ~stall1) | (Br & cond & v);
+  regmux := Ldr -> inbus : (Br & v) -> {0'12, nxpc, 0'2} : aluRes;
+
+  (*control unit*)
+  S := N ^ OV;
+  nxpc := PC + 1;
+  cond := IR.27 ^ (
+      (cc = 0) & N  |  (*MI, PL*)
+      (cc = 1) & Z  |  (*EQ, NE*)
+      (cc = 2) & C  |  (*CS, CC*)
+      (cc = 3) & OV  |  (*VS, VC*)
+      (cc = 4) & (C|Z)  |  (*LS, HI*)
+      (cc = 5) & S  |  (*LT, GE*)
+      (cc = 6) & (S|Z) | (*LE, GT*)
+      (cc = 7));
+  pcmux := ~rst -> StartAdr :
+    stall -> PC :
+    (Br & cond & u) -> off[17:0] + nxpc :
+    (Br & cond & ~u) -> C0[19:2] : nxpc;
+
+  sa := aluRes.31;
+  sb := B.31;
+  sc := C1.31;
+  stall := stallL | stallM | stallD | stallFA | stallFM | stallFD | stallX;
+  stallL := (Ldr | Str) & ~stall1;
+  
+  PC := pcmux;
+  PMsel := ~rst | (pcmux[17:11] = 7FH'7);
+  IRBuf := stall -> IRBuf : codebus;
+  stall1 := stallX -> stall1 : stallL;
+  R[ira0] := regwr -> regmux : A;
+  N := regwr -> regmux.31 : N;
+  Z := regwr -> (regmux = 0) : Z;
+  C := Add -> (sb&sc) | (~sa&~sb&sc) | (~sa&sb&~sc&sa) :
+    Sub -> (~sb&sc) | (sa&~sb&~sc) | (sa&sb&sc) : C;
+  OV := Add -> (sa&~sb&~sc) | (~sa&sb&sc) :
+    Sub -> (sa&~sb&sc) | (~sa&sb&~sc) : OV;;
+  H := Mul -> product[63:32] : Div -> remainder : H
+END RISC5.

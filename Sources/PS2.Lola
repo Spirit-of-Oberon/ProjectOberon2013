@@ -1,0 +1,25 @@
+MODULE PS2 (
+  IN clk, rst, done: BIT;
+  OUT rdy, shift: BIT;
+  OUT data: BYTE;
+  IN PS2C, PS2D: BIT);
+
+  REG (clk)
+    Q0, Q1: BIT;   (*synchronizer and falling edge detector*)
+    shreg: [11] BIT;
+    inptr, outptr: [4] BIT;
+    fifo: [16] BYTE;
+  VAR endbit: BIT;
+
+BEGIN endbit := ~shreg.0;   (*start bit reached correct pos*)
+  shift := Q1 & ~Q0;
+  Q0 := PS2C; Q1 := Q0;
+  data := fifo[outptr];
+  rdy := (inptr # outptr);
+
+  shreg := (~rst | endbit) -> 7FFH'11:
+    shift -> {PS2D, shreg[10:1]} : shreg;
+  outptr := ~rst -> 0 : rdy & done -> outptr + 1 : outptr;
+  inptr := ~rst -> 0 : endbit -> inptr + 1 : inptr;
+  fifo[inptr] := endbit -> shreg[8:1] : fifo[inptr];
+END PS2.
