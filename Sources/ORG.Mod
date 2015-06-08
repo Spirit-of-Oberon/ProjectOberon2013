@@ -1,4 +1,4 @@
-MODULE ORG; (* NW  24.6.2014  code generator in Oberon-07 for RISC*)
+MODULE ORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
   IMPORT SYSTEM, Files, ORS, ORB;
   (*Code generator for Oberon compiler for RISC processor.
      Procedural interface to Parser OSAP; result in array "code".
@@ -936,7 +936,7 @@ MODULE ORG; (* NW  24.6.2014  code generator in Oberon-07 for RISC*)
 
   PROCEDURE Ord*(VAR x: Item);
   BEGIN
-    IF x.mode IN {ORB.Var, ORB.Par, RegI} THEN load(x) END
+    IF x.mode IN {ORB.Var, ORB.Par, RegI, Cond} THEN load(x) END
   END Ord;
 
   PROCEDURE Len*(VAR x: Item);

@@ -1,4 +1,4 @@
-MODULE RISC5Top(   (*NW 4.12.2014*)
+MODULE RISC5Top(   (*NW 30.5.2015*)
   IN CLK50M: BIT;
   IN btn: [4] BIT;
   IN swi: BYTE;
@@ -71,12 +71,9 @@ TYPE RISC5 := MODULE (
   IOBUF8 = MODULE (
     IN I: BYTE; OUT O: BYTE; INOUT IO: BYTE; IN T: BYTE) ^;
 
-  IBUFG := MODULE (IN I: BIT; OUT O: BIT) ^;
-  BUFG := MODULE (IN I: BIT; OUT O: BIT) ^;
   IOBUF := MODULE (IN I: BIT; OUT O: BIT; INOUT IO: BIT; IN T: BIT) ^;
 
-VAR clk, clk50: BIT;
-REG (clk50) clk25: BIT;
+REG (CLK50M) clk: BIT;
 REG (clk) rst: BIT;
   bitrate: BIT;   (*RS-232*)
   Lreg: BYTE;  (*LED*)
@@ -92,8 +89,6 @@ VAR riscx: RISC5;
   vid: VID;
   kbd: PS2;
   Ms: MouseP;
-  clkInBuf: IBUFG;
-  clk150buf: BUFG;
   sramBuf: IOBUF32;
   gpioBuf: IOBUF8;
 
@@ -150,7 +145,7 @@ BEGIN
   be1 := be & ~adr.0;
   SRce0 := be & adr[1];
   SRce1 := be & ~adr[1];
-  SRwe := ~wr | clk25;
+  SRwe := ~wr | clk;
   SRoe := wr;
   SRbe := {be1, be0, be1, be0};
   SRadr := dspreq -> vidadr : adr[19:2];
@@ -187,8 +182,5 @@ BEGIN
   cnt0 := limit -> 0 : cnt0 + 1;
   cnt1 := cnt1 + limit;
 
-(* The clocks *)
-  clkInBuf (CLK50M, clk50);
-  clk25 := ~clk25;  (* @ 50 MHz *)
-  clk150buf (clk25, clk);
+  clk := ~clk;  (* @ 50 MHz *)
 END RISC5Top.
