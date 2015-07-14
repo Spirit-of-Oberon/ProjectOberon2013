@@ -1,4 +1,4 @@
-MODULE LSS; (* NW 16.10.93 / 12.4.2015*)
+MODULE LSS; (* NW 16.10.93 / 6.7.2015*)
   IMPORT Texts, Oberon;
   
   CONST IdLen* = 32; NofKeys = 10;
@@ -55,21 +55,25 @@ MODULE LSS; (* NW 16.10.93 / 12.4.2015*)
   END identifier;
 
   PROCEDURE Number(VAR sym: INTEGER);
-    VAR i, k, h, n: INTEGER;
-      d: ARRAY 16 OF INTEGER;
-  BEGIN sym := integer; i := 0; k := 0; n := 0;
+    VAR i, k, h, n, d: INTEGER;
+      hex: BOOLEAN;
+      dig: ARRAY 16 OF INTEGER;
+  BEGIN sym := integer; i := 0; k := 0; n := 0; hex := FALSE;
     REPEAT
-      IF n < 16 THEN d[n] := ORD(ch)-30H; INC(n) ELSE Mark("too many digits"); n := 0 END ;
+      IF n < 16 THEN d := ORD(ch)-30H;
+        IF d >= 10 THEN hex := TRUE ; d := d - 7 END ;
+        dig[n] := d; INC(n)
+      ELSE Mark("too many digits"); n := 0
+      END ;
       Texts.Read(R, ch)
     UNTIL (ch < "0") OR (ch > "9") & (ch < "A") OR (ch > "F");
     IF ch = "H" THEN (*hex*)
-      REPEAT h := d[i];
-        IF h >= 10 THEN h := h-7 END ;
-        k := k*10H + h; INC(i) (*no overflow check*)
+      REPEAT h := dig[i]; k := k*10H + h; INC(i) (*no overflow check*)
       UNTIL i = n;
       Texts.Read(R, ch)
     ELSE
-      REPEAT k := k*10 + d[i]; INC(i) UNTIL i = n
+      IF hex THEN Mark("illegal hex digit") END ;
+      REPEAT k := k*10 + dig[i]; INC(i) UNTIL i = n
     END ;
     val := k
   END Number;
