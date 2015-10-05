@@ -1,24 +1,20 @@
-MODULE Divider(
-  IN clk, run: BIT;
+MODULE Divider(   (*NW 14.9.2015*)
+  IN clk, run, u: BIT;
   OUT stall: BIT;
-  IN x, y: WORD;  (*32 bit, y > 0*)
+  IN x, y: WORD;  (*y > 0*)
   OUT quot, rem: WORD);
-  REG (clk) S: [5] BIT;
-    R, Q: WORD;
-  VAR neg: BIT;
-    x0, r0, r1, r2, q0, q1, d: WORD;
-BEGIN stall := run & ~(S = 31);
-  neg := x.31;
-  x0 := neg -> ~x + y : x;    (* -x + (y-1) *)
-  r0 := (S = 0) -> 0'32 : R;
-  d := r1 - y;
-  r1 := {r0[30:0], q0.31};
-  r2 := d.31 -> r1 : d;
-  q0 := (S = 0) -> x0 : Q;
-  q1 := {q0[30:0], ~d.31};
-  quot := neg -> ~q1 : q1;
-  rem := neg -> ~r2 + y : r2;   (*(y-1) - r2*)
-  R := r2;
-  Q := q1;
-  S := run -> S+1 : 0
+  
+  REG (clk) S: [6] BIT;
+    RQ: [64] BIT;
+  VAR sign: BIT;
+    x0, w0, w1: WORD;
+BEGIN stall := run & (S # 33);
+  sign := x.31 & u;
+  x0 := sign -> -x : x;
+  w0 := RQ[62:31];
+  w1 := w0 - y;
+  S := run -> S+1 : 0;
+  quot  := ~sign -> RQ[31:0] : (RQ[63:32] = 0) -> -RQ[31:0] : -RQ[31:0] - 1;
+  rem := ~sign -> RQ[63:32] : (RQ[63:32] = 0) -> 0 :  y - RQ[63:32];
+  RQ := (S = 0) -> {0'32, x0} : {w1.31 -> w0 : w1,  RQ[30:0], ~w1[31]}
 END Divider.

@@ -1,4 +1,4 @@
-MODULE RISC5Top(   (*NW 30.5.2015*)
+MODULE RISC5Top(   (*NW 23.9.2015*)
   IN CLK50M: BIT;
   IN btn: [4] BIT;
   IN swi: BYTE;
@@ -8,14 +8,14 @@ MODULE RISC5Top(   (*NW 30.5.2015*)
   OUT SRce0, SRce1, SRwe, SRoe: BIT;  (*SRAM*)
   OUT SRbe: [4] BIT;
   OUT SRadr: [18] BIT;
-  OUT SRdat: WORD;
+  INOUT SRdat: WORD;
   IN MISO: [2] BIT;   (*SPI - SD card & network*)
   OUT SCLK, MOSI, SS: [2] BIT;
   OUT NEN: BIT;   (*network enable*)
   OUT hsync, vsync: BIT;   (*video control*)
   OUT RGB: [3] BIT;
-  INOUT PS2C, PS2D: BIT;   (*keyboard*)
-  INOUT mouse: [2] BIT;
+  IN PS2C, PS2D: BIT;   (*keyboard*)
+  INOUT msclk, msdat: BIT;
   INOUT gpio: BYTE);
 
 (* I/O addresses:
@@ -33,7 +33,7 @@ MODULE RISC5Top(   (*NW 30.5.2015*)
 TYPE RISC5 := MODULE (
     IN clk, rst, stallX: BIT;
       inbus, codebus: WORD;
-    OUT adr: [20] BIT;
+    OUT adr: [24] BIT;
       rd, wr, ben: BIT;
       outbus: WORD) ^;
 
@@ -57,21 +57,14 @@ TYPE RISC5 := MODULE (
       hsync, vsync: BIT; RGB: [3] BIT) ^;
 
   MouseP := MODULE ( 
-    IN clk, rst: BIT; INOUT io: [2] BIT;
+    IN clk, rst: BIT;
+    INOUT msclk, msdat: BIT;
     OUT out: [28] BIT) ^;
 
   PS2 = MODULE (
     IN clk, rst, done: BIT;
     OUT rdy, shift: BIT; data: BYTE;
     IN PS2C, PS2D: BIT) ^;
-
-  IOBUF32 = MODULE (
-    IN I: WORD; OUT O: WORD; INOUT IO: WORD; IN T: BIT) ^;
-
-  IOBUF8 = MODULE (
-    IN I: BYTE; OUT O: BYTE; INOUT IO: BYTE; IN T: BYTE) ^;
-
-  IOBUF := MODULE (IN I: BIT; OUT O: BIT; INOUT IO: BIT; IN T: BIT) ^;
 
 REG (CLK50M) clk: BIT;
 REG (clk) rst: BIT;
@@ -89,18 +82,14 @@ VAR riscx: RISC5;
   vid: VID;
   kbd: PS2;
   Ms: MouseP;
-  sramBuf: IOBUF32;
-  gpioBuf: IOBUF8;
 
   dmy: BIT;
-  adr: [20] BIT;
+  adr: [24] BIT;
   iowadr: [4] BIT;  (*word adress*)
-  rd, wr, be, ioenb, dspreq: BIT;
+  rd, wr, ben, ioenb, dspreq: BIT;
   be0, be1: BIT;
-  a0, a1, a2, a3: BIT;
-  inbus, inbus0, inbus1, outbus, outbus1: WORD;
-  inbusL, outbusB0, outbusB1, outbusB2, outbusB3: BYTE;
-  inbusH: [24] BIT;
+  inbus, inbus0: WORD;  (*data to RISC6 core*)
+  outbus: WORD;   (*data from RISC6 core*)
 
   dataTx, dataRx, dataKbd: BYTE;
   rdyRx, doneRx, startTx, rdyTx, rdyKbd, doneKbd: BIT;
@@ -112,18 +101,18 @@ VAR riscx: RISC5;
   gpin: BYTE;
 
 BEGIN
-  riscx (clk, rst, dspreq, inbus, inbus1, adr, rd, wr, be, outbus);
+  riscx (clk, rst, dspreq, inbus, inbus0, adr, rd, wr, ben, outbus);
   receiver (clk, rst, doneRx, RxD, bitrate, rdyRx, dataRx);
   transmitter (clk, rst, startTx, bitrate, dataTx, rdyTx, TxD);
   spi (clk, rst, spiStart, spiCtrl.2, outbus, spiRx, spiRdy, MISO.0 & MISO.1, MOSI1, SCLK1); 
-  vid (clk, swi.7, inbus1, dspreq, vidadr, hsync, vsync, RGB);
+  vid (clk, swi.7, inbus0, dspreq, vidadr, hsync, vsync, RGB);
   kbd (clk, rst, doneKbd, rdyKbd, dmy, dataKbd, PS2C, PS2D);
-  Ms (clk, rst, mouse, dataMs);
-  sramBuf (outbus1, inbus1, SRdat, ~wr);
-  gpioBuf (gpout, gpin, gpio, ~gpoc);
+  Ms (clk, rst, msclk, msdat, dataMs);
+  TS(SRdat, inbus0, outbus, ~wr);
+  TS(gpio, gpin, gpout, gpoc);
 
   iowadr := adr[5:2];
-  ioenb := (adr[19:6] = 3FFFH'14);
+  ioenb := (adr[23:6] = 3FFFFH'18);
   inbus := ~ioenb -> inbus0 :
     ((iowadr = 0) -> cnt1 :
     (iowadr = 1) -> {0'20, btn, swi} :
@@ -137,30 +126,14 @@ BEGIN
     (iowadr = 9) -> {0'24, gpoc} : 0'32);
 
 (*access to SRAM*)
-  a0 := ~adr[1] & ~adr[0];
-  a1 := ~adr[1] & adr[0];
-  a2 := adr[1] & ~adr[0];
-  a3 := adr[1] & adr[0];
-  be0 := be & adr.0;
-  be1 := be & ~adr.0;
-  SRce0 := be & adr[1];
-  SRce1 := be & ~adr[1];
+  be0 := ben & adr.0;
+  be1 := ben & ~adr.0;
+  SRce0 := ben & adr.1;
+  SRce1 := ben & ~adr.1;
   SRwe := ~wr | clk;
   SRoe := wr;
   SRbe := {be1, be0, be1, be0};
   SRadr := dspreq -> vidadr : adr[19:2];
-
-  inbusL := (~be | a0) -> inbus1[7:0] :
-    a1 -> inbus1[15:8] :
-    a2 -> inbus1[23:16] : inbus1[31:24];
-  inbusH := ~be -> inbus1[31:8] : 0'24;
-  inbus0 := {inbusH, inbusL};
-
-  outbusB0 := outbus[7:0];
-  outbusB1 := be & a1 -> outbus[7:0] : outbus[15:8];
-  outbusB2 := be & a2 -> outbus[7:0] : outbus[23:16];
-  outbusB3 := be & a3 -> outbus[7:0] : outbus[31:24];
-  outbus1 := {outbusB3, outbusB2, outbusB1, outbusB0};
 
   dataTx := outbus[7:0];
   startTx := wr & ioenb & (iowadr = 2);
@@ -182,5 +155,5 @@ BEGIN
   cnt0 := limit -> 0 : cnt0 + 1;
   cnt1 := cnt1 + limit;
 
-  clk := ~clk;  (* @ 50 MHz *)
+  clk := ~clk  (* @ 50 MHz *)
 END RISC5Top.

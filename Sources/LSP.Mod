@@ -1,4 +1,4 @@
-MODULE LSP;  (*display data structure;  NW 5.2.2014*)
+MODULE LSP;  (*display data structure;  NW 28.8.2015*)
   IMPORT Texts, Oberon, LSB;
 
   VAR W: Texts.Writer;
@@ -81,5 +81,5 @@ BEGIN Texts.OpenWriter(W);
   C[LSB.or] := "| "; C[LSB.xor] := "^ "; C[LSB.and] := "& ";  C[LSB.not] := "~ ";
   C[LSB.add] := "+ "; C[LSB.sub] := "- "; C[LSB.mul] := "* "; C[LSB.div] := "/ ";
   C[LSB.eql] := "= "; C[LSB.neq] := "# "; C[LSB.lss] := "< "; C[LSB.geq] := ">="; C[LSB.leq] := "<="; C[LSB.gtr] := "> ";
-  C[LSB.then] := " -> "; C[LSB.else] := " :: "; C[LSB.next] := "--"
+  C[LSB.then] := " -> "; C[LSB.else] := " :: "; C[LSB.ts] := "TS "; C[LSB.next] := "--"
 END LSP.

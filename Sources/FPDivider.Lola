@@ -1,35 +1,36 @@
-MODULE FPDivider(
+MODULE FPDivider(   (*NW 19.9.2015*)
   IN clk, run: BIT; x, y: WORD;
   OUT stall: BIT; z: WORD);
 
   REG (clk) S: [5] BIT;   (*state*)
-    R, Q: [24] BIT;   (*remainder, quotient*)
+    R: [24] BIT;   (*remainder*)
+    Q: [25] BIT;   (*quotient*)
 
   VAR sign: BIT;
     xe, ye: [8] BIT;
     e0, e1: [9] BIT;
-    q0, q1, q2: [24] BIT;
-    r0, r1, r2, d: [25] BIT;
+    z0: [24] BIT;
+    r0, r1, d, q0: [25] BIT;
 
-BEGIN sign := x.31 ^ y.31;   (*xor*)
+BEGIN
+  sign := x.31 ^ y.31;   (*xor*)
   xe := x[30:23]; ye := y[30:23];
   e0 := {0'1, xe} - {0'1, ye};
-  e1 := e0 + 126 + q1.23;
+  e1 := e0 + 126 + Q.24;
+  stall := run & (S # 25);
 
-  r0 := (S = 0) -> {1'2, x[22:0]} : r2;
+  r0 := (S = 0) -> {1'2, x[22:0]} : {R, 0'1};
   d := r0 - {1'2, y[22:0]};
   r1 := d.24 -> r0 : d;
-  r2 := {R, 0'1};
   q0 := (S = 0) -> 0 : Q;
-  q1 := {q0[22:0], ~d.24};
-  q2 := q1.23 -> q1[23:0] : {q1[22:0], 0'1};
 
+  z0 := Q.24 -> Q[24:1] : Q[23:0];  (*post norm*)
   z := (xe = 0) -> 0 :
-    (ye = 0) -> {sign, $FF'8, 0'23} :  (*divide by 0*)
-    ~e1.8 -> {sign, e1[7:0], q2[22:0]} :
-    ~e1.7 -> {sign, $FF'8, q2[22:0]} : 0;   (*overflow*)
-  stall := run & (S # 23);
+    (ye = 0) -> {sign, 0FFH'8, 0'23} :  (*divide by 0*)
+    ~e1.8 -> {sign, e1[7:0], z0[22:0]} :
+    ~e1.7 -> {sign, 0FFH'8, z0[22:0]} : 0;   (*overflow*)
 
-  R := r1[23:0]; Q := q1;
+  R := r1[23:0];
+  Q := {q0[23:0], ~d.24};
   S := run -> S+1 : 0
 END FPDivider.

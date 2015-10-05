@@ -1,15 +1,15 @@
-MODULE LSS; (* NW 16.10.93 / 6.7.2015*)
+MODULE LSS; (* NW 16.10.93 / 1.9.2015*)
   IMPORT Texts, Oberon;
   
-  CONST IdLen* = 32; NofKeys = 10;
+  CONST IdLen* = 32; NofKeys = 11;
     (*symbols*) null = 0;
     arrow* = 1; times* = 2; div* = 3; and* = 4; plus* = 5; minus* = 6; or* = 7; xor* = 8;  not* = 9;
     eql* = 10; neq* = 11; lss* = 12; leq* = 13; gtr* = 14; geq* = 15;
     at* = 16; apo* = 17; period* = 18; comma* = 19; colon* = 20; rparen* = 21; rbrak* = 22; rbrace* = 23; 
     then* = 24; lparen* = 26; lbrak* = 27; lbrace* = 28; repl* = 29; becomes* = 30;
-    ident* = 31; integer* = 32; reg* = 35; semicolon* = 40; end* = 41;
-    const* = 51; type* = 52; var* = 53; out* = 54; inout* = 55; in* = 56;
-    begin* = 57; module* = 58; eof = 59;
+    ident* = 31; integer* = 32; ts* = 33; semicolon* = 40; end* = 41;
+    const* = 51; type* = 52; reg* = 53; var* = 54; out* = 55; inout* = 56; in* = 57;
+    begin* = 58; module* = 59; eof = 60;
 
   TYPE Ident* = ARRAY IdLen OF CHAR;
 
@@ -55,9 +55,9 @@ MODULE LSS; (* NW 16.10.93 / 6.7.2015*)
   END identifier;
 
   PROCEDURE Number(VAR sym: INTEGER);
-    VAR i, k, h, n, d: INTEGER;
+    VAR i, k, h, n, d: LONGINT;
       hex: BOOLEAN;
-      dig: ARRAY 16 OF INTEGER;
+      dig: ARRAY 16 OF LONGINT;
   BEGIN sym := integer; i := 0; k := 0; n := 0; hex := FALSE;
     REPEAT
       IF n < 16 THEN d := ORD(ch)-30H;
@@ -161,4 +161,5 @@ BEGIN Texts.OpenWriter(W);
   key[7] := "REG"; symno[7] := reg;
   key[8] := "TYPE"; symno[8] := type;
   key[9] := "VAR"; symno[9] := var;
+  key[10] := "TS"; symno[10] := ts
 END LSS.

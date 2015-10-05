@@ -1,4 +1,4 @@
-MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 25.2.2015 for RISC (LSCX)*)
+MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 26.9.2015 for RISC (LSCX)*)
   IMPORT Texts, Oberon, LSB, LSS;
   
   VAR sym: INTEGER;
@@ -186,7 +186,9 @@ MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 25.2.2015 for RISC (LSCX)*)
     VAR y, z: LSB.Item; op: INTEGER;
   BEGIN
     IF sym = LSS.minus THEN LSS.Get(sym); term(y);
-      IF y.tag = LSB.lit THEN x := y; x.val := -y.val ELSE x := New(LSB.sub, NIL, y); x.type := y.type END
+      IF y.tag = LSB.lit THEN x := y; x.val := -y.val
+      ELSE x := New(LSB.sub, NIL, y); x.type := y.type; x.size := y.siz
+      END
     ELSIF sym = LSS.plus THEN LSS.Get(sym); term(x);
     ELSE term(x)
     END ;
@@ -294,21 +296,48 @@ MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 25.2.2015 for RISC (LSCX)*)
         END
       ELSE LSS.Mark("bad statement")
       END
+    ELSIF sym = LSS.ts THEN  (*tri-state*) LSS.Get(sym);
+      IF sym = LSS.lparen THEN LSS.Get(sym) ELSE LSS.Mark("( missing") END ;
+      IF sym = LSS.ident THEN
+        x := ThisObj(LSS.id); x.b := undef;  (*INOUT parameter*)
+        IF x.val # 5 THEN LSS.Mark("not INOUT") END ;
+        LSS.Get(sym);
+        IF sym = LSS.comma THEN LSS.Get(sym) END ;
+        IF sym = LSS.ident THEN y := ThisObj(LSS.id); CheckAssign(x, y); y.b := undef END ;  (*output from gate*)
+        LSS.Get(sym);
+        IF sym = LSS.comma THEN LSS.Get(sym) END ;
+        expression(z);
+        IF (z.tag = LSB.lit) & (z.val <= 1) THEN z.type := LSB.bitType END ;
+        CheckAssign(x, z); LSS.Get(sym);
+        IF sym = LSS.comma THEN LSS.Get(sym) END ;
+        expression(w);  (*control*)
+        IF w.type # LSB.bitType THEN CheckAssign(x, w) END ;
+        w := New(LSB.next, z, w); x.b := New(LSB.ts, y, w);
+        IF sym = LSS.rparen THEN LSS.Get(sym) ELSE LSS.Mark(") missing") END
+      END
     END
   END Statement;
 
   PROCEDURE StatSequence;
   BEGIN Statement;
     WHILE sym <= LSS.semicolon DO
-      IF sym = LSS.semicolon THEN LSS.Get(sym)
-      ELSIF sym < LSS.semicolon THEN LSS.Mark("semicolon missing?");
-      END ; 
+      IF sym < LSS.semicolon THEN LSS.Mark("semicolon missing?") END ;
+      WHILE sym = LSS.semicolon DO LSS.Get(sym) END ;
       Statement
     END ;
     IF sym = LSS.end THEN LSS.Get(sym) ELSE LSS.Mark("END ?") END
   END StatSequence;
 
   (*---------------------------------------------------*)
+  
+  (* for variables and registers,, obj.val has the meaning
+    0  register
+    1  register with imlicit clock "clk"
+    2  variable
+    3  output parameter
+    4  output parameter with register
+    5  inout parameter
+    6  input parameter  *)
   
   PROCEDURE ConstDeclaration;
     VAR obj: LSB.Object;
@@ -382,8 +411,12 @@ MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 25.2.2015 for RISC (LSCX)*)
   PROCEDURE ParamList;
     VAR kind: INTEGER;
   BEGIN
-    IF sym = LSS.in THEN kind := 6 ELSIF sym = LSS.out THEN kind := 3 ELSIF sym = LSS.inout THEN kind := 4 END ;
-    LSS.Get(sym); VarList(kind, NIL)
+    IF sym = LSS.in THEN LSS.Get(sym); kind := 6
+    ELSIF sym = LSS.out THEN LSS.Get(sym);
+      IF sym = LSS.reg THEN LSS.Get(sym); kind := 4 ELSE kind := 3 END
+    ELSIF sym = LSS.inout THEN LSS.Get(sym); kind := 5
+    END ;
+    VarList(kind, NIL)
   END ParamList;
 
   PROCEDURE Traverse(x: LSB.Item);
@@ -496,7 +529,6 @@ MODULE LSC;  (*Lola System Compiler, NW 8.1.95 / 25.2.2015 for RISC (LSCX)*)
   END Compile;
 
 BEGIN Texts.OpenWriter(W);
-  Texts.WriteString(W, "Lola compiler; NW 20.2.2015"); Texts.WriteLn(W);
-  NEW(top); bot := LSB.root; NEW(undef); undef.tag := 2; undef.type := LSB.bitType;
-  factor := factor0; expression := expression0; Unit := Unit0
+  Texts.WriteString(W, "Lola compiler; NW 6.7.2015"); Texts.WriteLn(W);
+  NEW(top); bot := LSB.root; NEW(undef); undef.tag := 2; undef.type := LSB.bitType
 END LSC.

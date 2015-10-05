@@ -1,34 +1,29 @@
-MODULE FPMultiplier(
+MODULE FPMultiplier(   (*NW 15.9.2015*)
   IN clk, run: BIT; x, y: WORD;
   OUT stall: BIT; z: WORD);
 
   REG (clk) S: [5] BIT;   (*state*)
-    B2, A2: [24] BIT;
+    P: [48] BIT;   (*product*)
 
   VAR sign: BIT;
     xe, ye: [8] BIT;
     e0, e1: [9] BIT;
-    B0: [25] BIT;
-    B00, B01, B1, A1, A0, z0: [24] BIT;
+    w0, z0: [24] BIT;
+    w1: [25] BIT;
 
 BEGIN sign := x.31 ^ y.31;   (*xor*)
-  xe := x[30:23]; ye := y[30:23]; e0 := {0'1, xe} + {0'1, ye};
-  B00 := (S = 0) -> 0 : B2;
-  B01 := A0.0 -> {1'1, y[22:0]} : 0;
-  B0 := {0'1, B00} + {0'1, B01};
-  B1 := B0[24:1];
-  A0 := (S = 0) -> {1'1, x[22:0]} : A2;
-  A1 := {B0.0, A0[23:1]};
+  xe := x[30:23]; ye := y[30:23];
+  e0 := {0'1, xe} + {0'1, ye};
+  e1 := e0 - 127 + P.47;
+  stall := run & (S # 25);
+  w0 := P.0 -> {1'1, y[22:0]} : 0;
+  w1 := {0'1, P[47:24]} + {0'1, w0};
 
-  e1 := e0 - 127 + B1.23;
-  z0 := B1.23 -> B1 : {B1[22:0], A1.23};
+  P := (S = 0) -> {0'24, 1'1, x[22:0]} : {w1, P[23:1]};
+  S := run -> S+1 : 0;
+
+  z0 := P.47 -> P[47:24] : P[46:23];  (*post norm*)
   z := (xe = 0) | (ye = 0) -> 0 :
     ~e1.8 -> {sign, e1[7:0], z0[22:0]} :
     ~e1.7 -> {sign, 0FFH'8, z0[22:0]} : 0;  (*overflow*)
-  stall := run & (S # 23);
-
-  B2 := B1; A2 := A1;
-  S := run -> S+1 : 0;
 END FPMultiplier.
-
-  

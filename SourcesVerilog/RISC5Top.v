@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps  // NW 27.5.09 / 14.10.2014
+`timescale 1ns / 1ps  // 22.9.2015
 // with SRAM, byte access, flt.-pt., and gpio
 // PS/2 mouse and network 7.1.2014 PDR
 
@@ -19,8 +19,8 @@ module RISC5Top(
   output NEN,  // network enable
   output hsync, vsync, // video controller
   output [2:0] RGB,
-  inout PS2C, PS2D,    // keyboard
-  inout [1:0] mouse,
+  input PS2C, PS2D,    // keyboard
+  inout msclk, msdat,
   inout [7:0] gpio);
 
 // IO addresses for input / output
@@ -35,16 +35,12 @@ module RISC5Top(
 // 8  general-purpose I/O data
 // 9  general-purpose I/O tri-state control
 
-wire clk, clk50;
-reg rst, clk25;
-
-wire[19:0] adr;
+reg rst, clk;
+wire[23:0] adr;
 wire [3:0] iowadr; // word address
-wire rd, wr, be, ioenb, dspreq;
-wire a0, a1, a2, a3;
-wire[31:0] inbus, inbus0, inbus1, outbus, outbus1;
-wire [7:0] inbusL, outbusB0, outbusB1, outbusB2, outbusB3;
-wire [23:0] inbusH;
+wire [31:0] inbus, inbus0;  // data to RISC core
+wire [31:0] outbus;  // data from RISC core
+wire rd, wr, ben, ioenb, dspreq;
 
 wire [7:0] dataTx, dataRx, dataKbd;
 wire rdyRx, doneRx, startTx, rdyTx, rdyKbd, doneKbd;
@@ -63,8 +59,8 @@ wire [17:0] vidadr;
 reg [7:0] gpout, gpoc;
 wire [7:0] gpin;
 
-RISC5 riscx(.clk(clk), .rst(rst), .rd(rd), .wr(wr), .ben(be), .stallX(dspreq),
-   .adr(adr), .codebus(inbus1), .inbus(inbus), .outbus(outbus));
+RISC5 riscx(.clk(clk), .rst(rst), .rd(rd), .wr(wr), .ben(ben), .stallX(dspreq),
+   .adr(adr), .codebus(inbus0), .inbus(inbus), .outbus(outbus));
 RS232R receiver(.clk(clk), .rst(rst), .RxD(RxD), .fsel(bitrate), .done(doneRx),
    .data(dataRx), .rdy(rdyRx));
 RS232T transmitter(.clk(clk), .rst(rst), .start(startTx), .fsel(bitrate),
@@ -73,13 +69,13 @@ SPI spi(.clk(clk), .rst(rst), .start(spiStart), .dataTx(outbus),
    .fast(spiCtrl[2]), .dataRx(spiRx), .rdy(spiRdy),
  	.SCLK(SCLK[0]), .MOSI(MOSI[0]), .MISO(MISO[0] & MISO[1]));
 VID vid(.clk(clk), .req(dspreq), .inv(swi[7]),
-   .vidadr(vidadr), .viddata(inbus1), .RGB(RGB), .hsync(hsync), .vsync(vsync));
+   .vidadr(vidadr), .viddata(inbus0), .RGB(RGB), .hsync(hsync), .vsync(vsync));
 PS2 kbd(.clk(clk), .rst(rst), .done(doneKbd), .rdy(rdyKbd), .shift(),
    .data(dataKbd), .PS2C(PS2C), .PS2D(PS2D));
-MouseP Ms(.clk(clk), .rst(rst), .io(mouse), .out(dataMs));
+MouseP Ms(.clk(clk), .rst(rst), .msclk(msclk), .msdat(msdat), .out(dataMs));
 
 assign iowadr = adr[5:2];
-assign ioenb = (adr[19:6] == 14'b11111111111111);
+assign ioenb = (adr[23:6] == 18'h3FFFF);
 assign inbus = ~ioenb ? inbus0 :
    ((iowadr == 0) ? cnt1 :
     (iowadr == 1) ? {20'b0, btn, swi} :
@@ -90,38 +86,22 @@ assign inbus = ~ioenb ? inbus0 :
     (iowadr == 6) ? {3'b0, rdyKbd, dataMs} :
     (iowadr == 7) ? {24'b0, dataKbd} :
     (iowadr == 8) ? {24'b0, gpin} :
-	 (iowadr == 9) ? {24'b0, gpoc} : 0);
+    (iowadr == 9) ? {24'b0, gpoc} : 0);
 	 
-// byte access to SRAM
-assign a0 = ~adr[1] & ~adr[0];
-assign a1 = ~adr[1] & adr[0];
-assign a2 = adr[1] & ~adr[0];
-assign a3 = adr[1] & adr[0];
-assign SRce0 = be & adr[1];
-assign SRce1 = be & ~adr[1];
-assign SRbe0 = be & adr[0];
-assign SRbe1 = be & ~adr[0];
-assign SRwe = ~wr | clk25;
+assign SRce0 = ben & adr[1];
+assign SRce1 = ben & ~adr[1];
+assign SRbe0 = ben & adr[0];
+assign SRbe1 = ben & ~adr[0];
+assign SRwe = ~wr | clk;
 assign SRoe = wr;
 assign SRbe = {SRbe1, SRbe0, SRbe1, SRbe0};
 assign SRadr = dspreq ? vidadr : adr[19:2];
-
-assign inbusL = (~be | a0) ? inbus1[7:0] :
-  a1 ? inbus1[15:8] : a2 ? inbus1[23:16] : inbus1[31:24];
-assign inbusH = ~be ? inbus1[31:8] : 24'b0;
-assign inbus0 = {inbusH, inbusL};assign outbus1[7:0] = outbus[7:0];
-
-assign outbusB0 = outbus[7:0];
-assign outbusB1 = be & a1 ? outbus[7:0] : outbus[15:8];
-assign outbusB2 = be & a2 ? outbus[7:0] : outbus[23:16];
-assign outbusB3 = be & a3 ? outbus[7:0] : outbus[31:24];
-assign outbus1 = {outbusB3, outbusB2, outbusB1, outbusB0};
 
 genvar i;
 generate // tri-state buffer for SRAM
   for (i = 0; i < 32; i = i+1)
   begin: bufblock
-    IOBUF SRbuf (.I(outbus1[i]), .O(inbus1[i]), .IO(SRdat[i]), .T(~wr));
+    IOBUF SRbuf (.I(outbus[i]), .O(inbus0[i]), .IO(SRdat[i]), .T(~wr));
   end
 endgenerate
 
@@ -154,8 +134,5 @@ begin
   gpoc <= ~rst ? 0 : (wr & ioenb & (iowadr == 9)) ? outbus[7:0] : gpoc;
 end
 
-//The Clocks
-IBUFG clkInBuf(.I(CLK50M), .O(clk50));
-always @ (posedge clk50) clk25 <= ~clk25;
-BUFG clk150buf(.I(clk25), .O(clk));
+always @ (posedge CLK50M) clk <= ~clk;
 endmodule

@@ -98,8 +98,8 @@ NET "PS2C" LOC = "M16" |PULLUP;
 NET "PS2D" LOC = "M15" |PULLUP;
 
 # PS/2 mouse and SPI (SD-Card and Network) on A2 connector
-NET "mouse[0]" LOC = "E6" |PULLUP;  # pin 4
-NET "mouse[1]" LOC = "C5" |PULLUP;  # pin 6
+NET "msclk" LOC = "E6" |PULLUP;  # pin 4
+NET "msdat" LOC = "C5" |PULLUP;  # pin 6
 NET "MOSI[0]" LOC = "D6";  # pin 7
 NET "MOSI[1]" LOC = "B11";  # pin 29
 NET "SCLK[0]" LOC = "D8";  # pin 13

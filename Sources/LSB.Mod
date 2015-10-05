@@ -1,4 +1,4 @@
-MODULE LSB;  (*Lola System Compiler Base LSBX, 5.2.2015*)
+MODULE LSB;  (*Lola System Compiler Base LSBX, 26.9.2015*)
   IMPORT Texts, Oberon;
   
   CONST
@@ -7,7 +7,7 @@ MODULE LSB;  (*Lola System Compiler Base LSBX, 5.2.2015*)
     (*tags in output*) const* = 1; typ* = 2; var* = 3; lit* = 4; sel* = 7; range* = 8; cons* = 9;
     repl* = 10; not* = 11; and* = 12; mul* = 13; div* = 14; or* = 15; xor* = 16; add* = 17; sub* = 18;
     eql* = 20; neq* = 21; lss* = 22; geq* = 23; leq* = 24; gtr* = 25;
-    then* = 30; else* = 31; next* = 32;
+    then* = 30; else* = 31; ts* = 32; next* = 33;
 
   TYPE
     Item* = POINTER TO ItemDesc;

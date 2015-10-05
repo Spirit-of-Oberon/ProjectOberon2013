@@ -1,7 +1,8 @@
-MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
+MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 31.8.2015*)
   IMPORT Files, Texts, Oberon, LSB;
 
   VAR W: Texts.Writer;
+    nofgen: INTEGER;;
     Constructor: PROCEDURE (VAR x: LSB.Item);   (*to avoid forward reference*)
     F: Files.File; R: Files.Rider;
     C: ARRAY 64, 6 OF CHAR;
@@ -78,8 +79,7 @@ MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
           Expression(x.a);
           IF x.tag = LSB.sel THEN Write("["); Expression(x.b); Write("]")
           ELSIF x.tag = LSB.lit THEN
-            IF x.size # 0 THEN
-              WriteInt(x.size); Write("'"); Write("h"); WriteHex(x.val)
+            IF x.size # 0 THEN WriteInt(x.size); Write("'"); Write("h"); WriteHex(x.val)
             ELSE WriteInt(x.val)
             END
           ELSE WriteString(C[x.tag]); Expression(x.b)
@@ -125,7 +125,8 @@ MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
         IF obj.val <= 1 THEN WriteString("reg ")
         ELSIF obj.val = 2 THEN WriteString("wire ")
         ELSIF obj.val = 3 THEN WriteString("output ")
-        ELSIF obj.val = 4 THEN WriteString("inout ")
+        ELSIF obj.val = 4 THEN WriteString("output reg ")
+        ELSIF obj.val = 5 THEN WriteString("inout ")
         ELSIF obj.val = 6 THEN WriteString("input ")
         ELSE WriteString("??? ")
         END ;
@@ -150,7 +151,7 @@ MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
   END ActParam;
 
   PROCEDURE ObjList1(obj: LSB.Object);  (*assignments to variables*)
-    VAR apar: LSB.Item; fpar: LSB.Object;
+    VAR apar, x: LSB.Item; fpar: LSB.Object; size: LONGINT;
   BEGIN
     WHILE obj # LSB.root DO
       IF (obj.tag = LSB.var) OR (obj.tag = LSB.const) THEN
@@ -160,6 +161,28 @@ MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
           Write("("); ActParam(apar.b, fpar); apar := apar.a; fpar := fpar.next;  (*actual param list*)
           WHILE apar # NIL DO WriteString(", "); ActParam(apar.b, fpar); apar := apar.a; fpar := fpar.next END ;
           Write(")"); Write(";"); WriteLn
+        ELSIF (obj.b # NIL) & (obj.val = 5) THEN  (*tri-state*)
+          size := obj.type.size; x := obj.b;
+        IF x.tag = LSB.ts THEN
+            IF obj.type = LSB.bitType THEN
+              WriteString("IOBUF block"); INC(nofgen); WriteInt(nofgen); WriteString(" (.IO("); WriteString(obj.name);
+              WriteString("), .O("); WriteString(x.a(LSB.Object).name); WriteString("), .I("); x := x.b; 
+              IF x.a.type = LSB.bitType THEN Expression(x.a) ELSE WriteString(x.a(LSB.Object).name) END ;
+              WriteString("), .T(");
+              IF x.b.type = LSB.bitType THEN Expression(x.b) ELSE  WriteString(x.b(LSB.Object).name) END ;
+              WriteString("));")
+            ELSE  (*array type*)
+              IF nofgen = 0 THEN WriteString("genvar i;"); WriteLn END ;
+              INC(nofgen); WriteString("generate"); WriteLn;
+              WriteString("for (i = 0; i < "); WriteInt(size); WriteString("; i = i+1) begin : bufblock"); WriteInt(nofgen); WriteLn;
+              WriteString("IOBUF block (.IO("); WriteString(obj.name);
+              WriteString("[i]), .O("); WriteString(x.a(LSB.Object).name); WriteString("[i]), .I("); x := x.b;
+              WriteString(x.a(LSB.Object).name); WriteString("[i]), .T(");
+              IF x.b.type = LSB.bitType THEN Expression(x.b) ELSE WriteString(x.b(LSB.Object).name); WriteString("[i]") END ;
+              WriteString("));"); WriteLn; WriteString("end"); WriteLn; WriteString("endgenerate")
+            END ;
+            WriteLn
+          END
         ELSIF (obj.b # NIL) & (obj.val >= 2) THEN
           WriteString("assign "); WriteString(obj.name);
           IF (obj.a # NIL) THEN Write("["); Expression(obj.a); Write("]") END ;
@@ -197,7 +220,7 @@ MODULE LSV;  (*Lola System: display Verilog; generate txt-File; NW 20.2.2015*)
     IF (S.class = Texts.Name) OR (S.class = Texts.String) THEN
       Texts.WriteString(W, LSB.modname); Texts.WriteString(W, " translating to  "); Texts.WriteString(W, S.s);
       F := Files.New(S.s); Files.Set(R, F, 0);
-      WriteString("`timescale 1ns / 1 ps"); WriteLn;
+      WriteString("`timescale 1ns / 1 ps"); WriteLn; nofgen := 0;
       WriteString("module "); WriteString(LSB.modname); WriteString("(   // translated from Lola"); WriteLn;
       ObjList0(LSB.top); ObjList1(LSB.top); ObjList2(LSB.top);
       WriteString("endmodule"); WriteLn;
@@ -211,5 +234,5 @@ BEGIN Texts.OpenWriter(W); Constructor := Constructor0;
   C[LSB.or] := " | "; C[LSB.xor] := " ^ "; C[LSB.and] := " & ";  C[LSB.not] := "~";
   C[LSB.add] := " + "; C[LSB.sub] := " - "; C[LSB.mul] := " * "; C[LSB.div] := " / ";
   C[LSB.eql] := " == "; C[LSB.neq] := " != "; C[LSB.lss] := " <  "; C[LSB.geq] := " >= "; C[LSB.leq] := " <= "; C[LSB.gtr] := " >  ";
-  C[LSB.then] := " ? "; C[LSB.else] := " : "; C[LSB.next] := "--"
+  C[LSB.then] := " ? "; C[LSB.else] := " : "; C[LSB.ts] := "TS"; C[LSB.next] := "--"
 END LSV.
