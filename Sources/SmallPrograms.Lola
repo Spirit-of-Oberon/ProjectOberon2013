@@ -1,0 +1,36 @@
+(*  LSC.Compile @    LSV.List Test.Lola.v  *)
+
+MODULE Counter (IN CLK50M, rstIn: BIT;
+  IN swi: BYTE; OUT leds: BYTE);
+REG (CLK50M) rst: BIT;
+  cnt0: [16] BIT;  (*milliseconds*)
+  cnt1: [10] BIT;  (*half seconds*)
+  cnt2: [8] BIT;
+VAR tick0, tick1: BIT;
+  BEGIN leds := swi.7 -> swi :  cnt2;
+  tick0 := (cnt0 = 24999);
+  tick1 := tick0 & (cnt1 = 499);
+  rst := ~rstIn;
+  cnt0 := ~rst -> 0 : tick0 -> 0 : cnt0 + 1;
+  cnt1 := ~rst -> 0 : tick1 -> 0 : cnt1 + tick0;
+  cnt2 := ~rst -> 0 : cnt2 + tick1
+END Counter.
+
+MODULE Shifter(IN CLK50M, rstIn: BIT;
+  IN swi: BYTE; OUT leds: BYTE);
+REG (CLK50M) rst, up: BIT;
+  cnt0: [16] BIT;  (*milliseconds*)
+  cnt1: [10] BIT;  (*half seconds*)
+  shreg: [8] BIT;
+VAR tick0, tick1: BIT;
+BEGIN leds := swi.7 -> swi :  shreg;
+  tick0 := (cnt0 = 24999);
+  tick1 := tick0 & (cnt1 = 499);
+  rst := ~rstIn;
+  cnt0 := ~rst -> 0 : tick0 -> 0 : cnt0 + 1;
+  cnt1 := ~rst -> 0 : tick1 -> 0 : cnt1 + tick0;
+  shreg := ~rst -> 1'8 :
+    ~tick1 -> shreg  :
+    up -> {shreg[6:0], 0'1} : {0'1, shreg[7:1]};
+  up := shreg.0 -> 1 : shreg.7 -> 0 : up
+END Shifter.
