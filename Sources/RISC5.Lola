@@ -1,4 +1,4 @@
-MODULE RISC5 (IN clk, rst, stallX: BIT;  (*NW 25.9.2015*)
+MODULE RISC5 (IN clk, rst, stallX: BIT;  (*NW 26.10.2015*)
   IN inbus, codebus: WORD;
   OUT adr: [24] BIT;
     rd, wr, ben: BIT;
@@ -68,7 +68,7 @@ MODULE RISC5 (IN clk, rst, stallX: BIT;  (*NW 25.9.2015*)
     product: [64] BIT;
     fsum, fprod, fquot: WORD;
 
-    Mov, Lsl, Asr, Ror, And, Ann, Ior, Xor, Add, Sub, Mul, Div: BIT;
+    Add, Sub, Mul, Div: BIT;
     Fadd, Fsub, Fmul, Fdiv: BIT; 
     Ldr, Str, Br: BIT;
 
@@ -94,14 +94,6 @@ BEGIN PM(clk, pcmux[8:0], pmout);
   off := ins[19:0];    (*mem instr*)
   offL := ins[23:0];  (*branch instr*)
 
-  Mov := ~p & (op = 0);  (*instruction signals*)
-  Lsl := ~p & (op = 1);
-  Asr := ~p & (op = 2);
-  Ror := ~p & (op = 3);
-  And := ~p & (op = 4);
-  Ann := ~p & (op = 5);
-  Ior := ~p & (op = 6);
-  Xor := ~p & (op = 7);
   Add := ~p & (op = 8);
   Sub := ~p & (op = 9);
   Mul := ~p & (op = 10);
@@ -145,24 +137,27 @@ BEGIN PM(clk, pcmux[8:0], pmout);
       (sc1 = 2) -> {t1[23:0], 0'8} :
       (sc1 = 1) -> {t1[27:0], 0'4} : t1;
   t3 := C1.4 -> {t2[15:0], 0'16} : t2;
-  
+ 
   aluRes :=
-    Mov -> (q ->
-      (~u -> {v!16, imm} : {imm, 0'16}) :
-      (~u -> C0 : (~v -> H : {N, Z, C, OV, 0'20, 58H'8}))):
-    Lsl -> t3 :
-    (Asr | Ror) -> s3 :
-    And -> B & C1 :
-    Ann -> B & ~C1 :
-    Ior -> B | C1 :
-    Xor -> B ^ C1 :
-    Add -> B + C1 + (u&C) :
-    Sub -> B - C1 - (u&C) :
-    Mul -> product[31:0] :
-    Div -> quotient :
-    (Fadd|Fsub) -> fsum :
-    Fmul -> fprod :
-    Fdiv -> fquot :  0;
+    ~op.3 ->
+      (~op.2 ->
+        (~op.1 ->
+          (~op.0 ->  (*Mov*)
+            (q -> 
+              (~u ->  {v!16 , imm} : {imm, 0'16}) :
+              (~u -> C0 : (~v -> H : {N, Z, C, OV, 0'20, 58H'8}))) :
+            t3 ):   (*Lsl*)
+          s3) :   (*Asr, Ror*)
+        (~op.1 -> 
+          (~op.0 -> B & C1 : B & ~C1) :   (*And, Ann*)
+          (~op.0 -> B | C1 : B ^ C1)) ):   (*Ior, Xor*)
+      (~op.2 ->
+        (~op.1 ->
+          (~op.0 -> B + C + (u&C) : B - C1 - (u&C)) :   (*Add, Sub*)
+          (~op.0 -> product[31:0] : quotient)) :       (*Mul, Div*)
+        (~op.1 ->
+          fsum :     (*Fad, Fsb*)
+          (~op.0 -> fprod : fquot))) ;  (*Fml, Fdv*)
 
   regwr := ~p & ~stall | (Ldr & ~stallX & ~stall1) | (Br & cond & v & ~stallX);
   a0 := ~adr.1 & ~adr.0;
@@ -171,7 +166,7 @@ BEGIN PM(clk, pcmux[8:0], pmout);
   a3 := adr.1 & adr.0;
   inbusL := (~ben | a0) -> inbus[7:0] : a1 -> inbus[15:8] : a2 -> inbus[23:16] : inbus[31:24];
   inbusH := ~ben -> inbus[31:8] : 0'24;
-  regmux := Ldr -> {inbusH, inbusL} : (Br & v) -> {0'8, nxpc, 0'2} : aluRes;
+  regmux := Ldr -> {inbusH, inbusL} : (Br & v) -> {0'8, nxpc, 0'2} : aluRes ;
 
   outbusB0 := A[7:0];
   outbusB1 := ben & a1 -> A[7:0] : A[15:8];
