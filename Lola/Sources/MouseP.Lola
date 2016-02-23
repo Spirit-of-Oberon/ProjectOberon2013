@@ -1,0 +1,31 @@
+MODULE MouseP (   (*NW 7.9.2015*)
+  IN clk, rst: BIT;
+  INOUT msclk, msdat: BIT;
+  OUT out: [28] BIT);
+  (* init mouse cmd F4 (start reporting) with start, parity and stop bits added *)
+  CONST InitBuf := 0FFFFFDE8H;  (* 1...1 1 0 1111 0100 0 *)
+  REG (clk) x, y: [10] BIT;   (*counters*)
+    btns: [3] BIT;
+    Q0, Q1, run: BIT;
+    shreg: [32] BIT;
+  VAR shift, endbit, reply: BIT;
+    dx, dy: [10] BIT;
+    msclk0, msdat0: BIT;
+BEGIN TS(msclk, msclk0, 0'1, rst);
+  TS(msdat, msdat0, 0'1, run | shreg.0);
+  shift := Q1 & ~Q0;   (*falling edge detector*)
+  reply := ~run & ~shreg.1;   (*start bit of echoed initBuf, if response*)
+  endbit := run & ~shreg.0;   (*normal packet received*)
+  dx := {shreg.5 !2, shreg.7 -> 0'8 : shreg[19:12]};   (*sign + ovfl*)
+  dy := {shreg.6 !2, shreg.8 -> 0'8 : shreg[30:23]};   (*sign + ovfl*)
+  out := {run, btns, 0'2, y, 0'2, x};
+  
+  run := rst & (reply | run);
+  Q0 := msclk0; Q1 := Q0;  (*edhe detector*)
+  shreg := ~rst -> 0FFFFFDE8H:
+    (endbit | reply) -> 0FFFFFFFFH'32:
+    shift -> {msdat0, shreg[31:1]} : shreg;
+  x := ~rst -> 0'10 : endbit -> x + dx : x;
+  y := ~rst -> 0'10 : endbit -> y + dy : y;
+  btns := ~rst -> 0'3 : endbit -> {shreg.1, shreg.3, shreg.2} : btns
+END MouseP.
