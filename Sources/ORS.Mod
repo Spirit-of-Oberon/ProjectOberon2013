@@ -1,4 +1,4 @@
-MODULE ORS; (* NW 19.9.93 / 1.4.2014  Scanner in Oberon-07*)
+MODULE ORS; (* NW 19.9.93 / 15.2.2016  Scanner in Oberon-07*)
   IMPORT SYSTEM, Texts, Oberon;
 
 (* Oberon Scanner does lexical analysis. Input is Oberon-Text, output is
@@ -28,7 +28,7 @@ MODULE ORS; (* NW 19.9.93 / 1.4.2014  Scanner in Oberon-07*)
     to* = 50; by* = 51; semicolon* = 52; end* = 53; bar* = 54;
     else* = 55; elsif* = 56; until* = 57; return* = 58;
     array* = 60; record* = 61; pointer* = 62; const* = 63; type* = 64;
-    var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69;
+    var* = 65; procedure* = 66; begin* = 67; import* = 68; module* = 69; eot = 70;
 
   TYPE Ident* = ARRAY IdLen OF CHAR;
 
@@ -209,7 +209,8 @@ MODULE ORS; (* NW 19.9.93 / 1.4.2014  Scanner in Oberon-07*)
   BEGIN
     REPEAT
       WHILE ~R.eot & (ch <= " ") DO Texts.Read(R, ch) END;
-      IF ch < "A" THEN
+      IF R.eot THEN sym := eot
+      ELSIF ch < "A" THEN
         IF ch < "0" THEN
           IF ch = 22X THEN String; sym := string
           ELSIF ch = "#" THEN Texts.Read(R, ch); sym := neq

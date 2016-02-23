@@ -1,4 +1,4 @@
-MODULE ORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
+MODULE ORG; (* NW  15.2.2016  code generator in Oberon-07 for RISC*)
   IMPORT SYSTEM, Files, ORS, ORB;
   (*Code generator for Oberon compiler for RISC processor.
      Procedural interface to Parser OSAP; result in array "code".
@@ -64,7 +64,7 @@ MODULE ORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
   END Put1;
 
   PROCEDURE Put1a(op, a, b, im: LONGINT);
-  BEGIN (*same as Pu1, but with range test  -10000H <= im < 10000H*)
+  BEGIN (*same as Put1, but with range test  -10000H <= im < 10000H*)
     IF (im >= -10000H) & (im <= 0FFFFH) THEN Put1(op, a, b, im)
     ELSE Put1(Mov+U, RH, 0, im DIV 10000H);
       IF im MOD 10000H # 0 THEN Put1(Ior, RH, RH, im MOD 10000H) END ;
@@ -652,7 +652,7 @@ MODULE ORG; (* NW  31.5.2015  code generator in Oberon-07 for RISC*)
     END ;
     Put2(Ldr, RH+1, y.r, 0); Put1(Add, y.r, y.r, 4);
     Put2(Str, RH+1, x.r, 0); Put1(Add, x.r, x.r, 4);
-    Put1(Sub, RH, RH, 1); Put3(BC, NE, -6); DEC(RH, 2)
+    Put1(Sub, RH, RH, 1); Put3(BC, NE, -6); RH := 0
   END StoreStruct;
 
   PROCEDURE CopyString*(VAR x, y: Item);  (*from x to y*)

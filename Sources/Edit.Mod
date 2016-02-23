@@ -1,4 +1,4 @@
-MODULE Edit; (*JG 2.11.90 / NW 18.1.92 /30.12.95 / 10.10.10 / NW 10.1.2013*)
+MODULE Edit; (*JG 2.11.90 / NW 28.11.2015*)
   IMPORT Files, Fonts, Texts, Display, Viewers, Oberon, MenuViewers, TextFrames;
 
   CONST CR = 0DX; maxlen = 32;
@@ -139,7 +139,7 @@ MODULE Edit; (*JG 2.11.90 / NW 18.1.92 /30.12.95 / 10.10.10 / NW 10.1.2013*)
     END Forward;
 
   BEGIN V := Oberon.Par.vwr;
-    IF Oberon.Par.frame # V.dsc THEN V := Oberon.MarkedViewer() END;
+    IF Oberon.Par.frame # V.dsc THEN V := Oberon.FocusViewer END;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
       Text := V.dsc.next(TextFrames.Frame);
       prevTime := time; Oberon.GetSelection(T, beg, end, time);
@@ -178,7 +178,7 @@ MODULE Edit; (*JG 2.11.90 / NW 18.1.92 /30.12.95 / 10.10.10 / NW 10.1.2013*)
       V: Viewers.Viewer;
       beg, end, time: LONGINT;
   BEGIN
-    V := Oberon.MarkedViewer();
+    V := Oberon.FocusViewer;
     IF (V.dsc # NIL) & (V.dsc.next IS TextFrames.Frame) THEN
       Text := V.dsc.next(TextFrames.Frame);
       Oberon.GetSelection(T, beg, end, time);
