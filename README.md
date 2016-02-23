@@ -15,4 +15,7 @@ https://github.com/MGreim/riscpas_repo
 https://github.com/aixp/ProjectOberon-BlackBox  
 http://www.informatik.uni-bremen.de/~fld/UnixAos/RISC-Oberon/
 
+Related:  
+https://github.com/andreaspirklbauer/Oberon-experimental
+
 ![Oberon V5](/oberonV5.jpg "Oberon V5")
