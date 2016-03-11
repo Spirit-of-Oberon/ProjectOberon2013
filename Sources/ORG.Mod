@@ -1,4 +1,4 @@
-MODULE ORG; (* NW  15.2.2016  code generator in Oberon-07 for RISC*)
+MODULE ORG; (* NW  4.3.2016  code generator in Oberon-07 for RISC*)
   IMPORT SYSTEM, Files, ORS, ORB;
   (*Code generator for Oberon compiler for RISC processor.
      Procedural interface to Parser OSAP; result in array "code".
@@ -571,7 +571,9 @@ MODULE ORG; (* NW  15.2.2016  code generator in Oberon-07 for RISC*)
       load(x);
       IF (y.a # 0) OR ~(op IN {ORS.eql, ORS.neq}) OR (code[pc-1] DIV 40000000H # -2) THEN Put1a(Cmp, x.r, x.r, y.a) END ;
       DEC(RH)
-    ELSE load(x); load(y); Put0(Cmp, x.r, x.r, y.r); DEC(RH, 2)
+    ELSE
+      IF (x.mode = Cond) OR (y.mode = Cond) THEN ORS.Mark("not implemented") END ;
+      load(x); load(y); Put0(Cmp, x.r, x.r, y.r); DEC(RH, 2)
     END ;
     SetCC(x, relmap[op - ORS.eql])
   END IntRelation;
@@ -633,8 +635,8 @@ MODULE ORG; (* NW  15.2.2016  code generator in Oberon-07 for RISC*)
   BEGIN loadAdr(x); loadAdr(y);
     IF (x.type.form = ORB.Array) & (x.type.len > 0) THEN
       IF y.type.len >= 0 THEN 
-        IF x.type.len >= y.type.len THEN Put1a(Mov, RH, 0, (y.type.size+3) DIV 4)
-        ELSE ORS.Mark("source array too long")
+        IF x.type.size = y.type.size THEN Put1a(Mov, RH, 0, (y.type.size+3) DIV 4)
+        ELSE ORS.Mark("different length/size, not implemented")
         END
       ELSE (*y is open array*)
         Put2(Ldr, RH, SP, y.a+4); s := y.type.base.size;  (*element size*)

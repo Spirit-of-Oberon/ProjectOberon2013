@@ -1,4 +1,4 @@
-MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07*)
+MODULE ORP; (*N. Wirth 1.7.97 / 7.3.2016  Oberon compiler for RISC in Oberon-07*)
   IMPORT Texts, Oberon, ORS, ORB, ORG;
   (*Author: Niklaus Wirth, 2014.
     Parser of Oberon-RISC compiler. Uses Scanner ORS to obtain symbols (tokens),
@@ -161,7 +161,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
     END
   END selector;
 
-  PROCEDURE CompTypes(t0, t1: ORB.Type; varpar, top: BOOLEAN): BOOLEAN;
+  PROCEDURE CompTypes(t0, t1: ORB.Type; varpar: BOOLEAN): BOOLEAN;
 
     PROCEDURE EqualSignatures(t0, t1: ORB.Type): BOOLEAN;
       VAR p0, p1: ORB.Object; com: BOOLEAN;
@@ -169,8 +169,8 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
       IF (t0.base = t1.base) & (t0.nofpar = t1.nofpar) THEN
         p0 := t0.dsc; p1 := t1.dsc;
         WHILE p0 # NIL DO
-          IF (p0.class = p1.class) & CompTypes(p0.type, p1.type, TRUE, FALSE) & (ORD(p0.rdo) = ORD(p1.rdo)) THEN
-            IF p0.type.form >= ORB.Array THEN com := CompTypes(p0.type, p1.type, (p0.class = ORB.Par), FALSE) END ;
+          IF (p0.class = p1.class) & CompTypes(p0.type, p1.type, TRUE) & (ORD(p0.rdo) = ORD(p1.rdo)) THEN
+            IF p0.type.form >= ORB.Array THEN com := CompTypes(p0.type, p1.type, (p0.class = ORB.Par)) END ;
             p0 := p0.next; p1 := p1.next
           ELSE p0 := NIL; com := FALSE
           END
@@ -183,7 +183,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
   BEGIN (*Compatible Types*)
     RETURN (t0 = t1)
       OR (t0.form = ORB.Array) & (t1.form = ORB.Array) & 
-        ((t0.len = t1.len) OR (top &( t0.len >= t1.len))) & CompTypes(t0.base, t1.base, varpar, FALSE)
+        ((t0.len = t1.len)  OR (t1.len = -1)) & CompTypes(t0.base, t1.base, varpar)
       OR (t0.form = ORB.Pointer) & (t1.form = ORB.Pointer) & IsExtension(t0.base, t1.base)
       OR (t0.form = ORB.Record) & (t1.form = ORB.Record) & IsExtension(t0, t1)
       OR (t0.form = ORB.Proc) & (t1.form = ORB.Proc) & EqualSignatures(t0, t1)
@@ -197,7 +197,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
   BEGIN expression(x);
     IF par # NIL THEN
       varpar := par.class = ORB.Par;
-      IF CompTypes(par.type, x.type, varpar, TRUE) THEN
+      IF CompTypes(par.type, x.type, varpar) THEN
         IF ~varpar THEN ORG.ValueParam(x)
         ELSE (*par.class = Par*)
           IF ~par.rdo THEN CheckReadOnly(x) END ;
@@ -384,12 +384,12 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
   BEGIN SimpleExpression(x);
     IF (sym >= ORS.eql) & (sym <= ORS.geq) THEN
       rel := sym; ORS.Get(sym); SimpleExpression(y); xf := x.type.form; yf := y.type.form;
-      IF CompTypes(x.type, y.type, FALSE,  TRUE) OR
+      IF CompTypes(x.type, y.type, FALSE) OR
           (xf = ORB.Pointer) & (yf = ORB.Pointer) & IsExtension(y.type.base, x.type.base) THEN
         IF (xf IN {ORB.Char, ORB.Int}) THEN ORG.IntRelation(rel, x, y)
         ELSIF xf = ORB.Real THEN ORG.RealRelation(rel, x, y)
         ELSIF xf = ORB.Set THEN ORG.SetRelation(rel, x, y)
-        ELSIF (xf IN {ORB.Pointer, ORB.Proc, ORB.NilTyp}) THEN
+        ELSIF (xf IN {ORB.Pointer, ORB.Proc, ORB.NilTyp, ORB.Bool}) THEN
           IF rel <= ORS.neq THEN ORG.IntRelation(rel, x, y) ELSE ORS.Mark("only = or #") END
         ELSIF (xf = ORB.Array) & (x.type.base.form = ORB.Char) OR (xf = ORB.String) THEN
           ORG.StringRelation(rel, x, y)
@@ -493,7 +493,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
         ELSE selector(x);
           IF sym = ORS.becomes THEN (*assignment*)
             ORS.Get(sym); CheckReadOnly(x); expression(y);
-            IF CompTypes(x.type, y.type, FALSE , TRUE) OR (x.type.form = ORB.Int) & (y.type.form = ORB.Int) THEN
+            IF CompTypes(x.type, y.type, FALSE) OR (x.type.form = ORB.Int) & (y.type.form = ORB.Int) THEN
               IF (x.type.form <= ORB.Pointer) OR (x.type.form = ORB.Proc) THEN ORG.Store(x, y)
               ELSIF y.type.size # 0 THEN ORG.StoreStruct(x, y)
               END
@@ -867,7 +867,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
       IF sym = ORS.return THEN
         ORS.Get(sym); expression(x);
         IF type.base = ORB.noType THEN ORS.Mark("this is not a function")
-        ELSIF ~CompTypes(type.base, x.type, FALSE, TRUE) THEN ORS.Mark("wrong result type")
+        ELSIF ~CompTypes(type.base, x.type, FALSE) THEN ORS.Mark("wrong result type")
         END
       ELSIF type.base.form # ORB.NoTyp THEN
         ORS.Mark("function without result"); type.base := ORB.noType
@@ -983,7 +983,7 @@ MODULE ORP; (*N. Wirth 1.7.97 / 15.2.2016  Oberon compiler for RISC in Oberon-07
     Oberon.Collect(0)
   END Compile;
 
-BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  15.2.2016");
+BEGIN Texts.OpenWriter(W); Texts.WriteString(W, "OR Compiler  7.3.2016");
   Texts.WriteLn(W); Texts.Append(Oberon.Log, W.buf);
   NEW(dummy); dummy.class := ORB.Var; dummy.type := ORB.intType;
   expression := expression0; Type := Type0; FormalType := FormalType0

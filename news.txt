@@ -1,0 +1,43 @@
+20160307 - compiler ORP updated
+   ORP.Statsequence (assignment)
+   ORP.CompTypes  (dyn arrays:  t1.len = -1)
+20160304 - compiler updated
+  comparison of Booleans re-restablished  (ORP.expression, ORG.IntRelation)
+  assignment of arrays: lengths of source and destination must be equal   (ORP.CompTypes)
+20160220   -compiler updated
+   multi-dimensional array;  dst := src
+   first dimension of src less than first dimersion of dst
+   changes in
+   ORS.Get   (eot)
+   ORG.Put1a   (typo)
+   ORG.StoreStruct
+   ORP.Declarations
+   ORP.Type0
+   ORP.TypeTest
+   Report 8.2.4
+   Report 9.8
+20151130 - updated
+    Oberon.GC  (ActCnt <= 0)
+    System.Free    Oberon.Collect(0)
+    System.Collect   Oberon.Collect(0)
+    Edit.Locate     V := Oberon.FocusViewer
+    Edit.Search     V := Oberon.FocusViewer
+20151118 - Project Oberon guide UsingOberon.pdf; TextFrames.Mod updated (upwards scrolling)
+20151027 - RISC5.v,  RISC5.Lola.txt    aluRes improved, no functional change
+20151016 - Added SmallPrograms.Lola (Lola section),
+  and ThreeCounters.pdf, StandalonePrograms.Mod (FPGA-related section);
+  Updated TextFrames.Mod - change in DisplayLine (ProjectOberon section)
+20151001 - Divider.v and  Divider.Lola.txt  corrected
+20150926 - Major update
+    Revision of RISC programs for better portability. Architecture unchanged.
+    1. The byte selection stetements have been moved from RISCTop to RISC
+    2. Address bus width changed from 20 to 24
+    the follwing programs are affected; all others remain unchanged
+        RISC5Top.v  RISC5.v  Multiplier.v  Divider.v   RS232R.v
+        FPAdder.v  FPMultiplier.v  FPDivider.v  MouseP.v  RISC5.ucf
+20150926 - Updates of Lola corresponding programs
+    the follwing programs are affected; all others remain unchanged
+        RISC5Top.Lola  RISC5.Lola   Multiplier.Lola   Divider.Lola
+        FPAdder.Lola  FPMultiplier.Lola  FPDivider.Lola  RS232R.Lola.txt  MouseP.Lola
+20150926 - The Lola compiler is updated. It accepts a new statement for tri-state ports.
+    LSC Mod   LSS.Mod  LSB.Mod  LSV.Mod  LSP.Mod
